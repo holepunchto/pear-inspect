@@ -2,7 +2,8 @@ const { Session } = require('bare-inspector')
 
 module.exports = class BareInspectorSwarm {
   constructor (swarm) {
-    swarm.on('connection', (conn, info) => {
+    this.swarm = swarm
+    this.connectionHandler = (conn, info) => {
       const session = new Session()
       session.connect()
 
@@ -14,6 +15,12 @@ module.exports = class BareInspectorSwarm {
       conn.on('error', () => {
         session.destroy()
       })
-    })
+    }
+
+    swarm.on('connection', this.connectionHandler)
+  }
+
+  destroy () {
+    this.swarm.off('connection', this.connectionHandler)
   }
 }

@@ -6,8 +6,13 @@ const randomKey = Array(32).fill(0).map(() => Math.random().toString(36).charAt(
 const topicKey = Buffer.from(randomKey)
 
 let server
+let bis
 
-test('setup', async t => {
+function teardown () {
+  bis.destroy()
+}
+
+test('setup hyperswarm server', async t => {
   server = new Hyperswarm()
   const discovery = server.join(topicKey, { server: true, client: false })
   await discovery.flushed()
@@ -16,8 +21,9 @@ test('setup', async t => {
 })
 
 test('inspector can evaluate', async t => {
+  t.teardown(teardown)
   t.plan(3)
-  new BareInspectorSwarm(server) // eslint-disable-line no-new
+  bis = new BareInspectorSwarm(server)
 
   const client = new Hyperswarm()
   client.on('close', err => {
@@ -39,7 +45,16 @@ test('inspector can evaluate', async t => {
   await client.flush()
 })
 
-test('teardown', async t => {
+test('Calling destroy removes listener', async t => {
+  t.plan(2)
+  bis = new BareInspectorSwarm(server)
+
+  t.is(server.listenerCount('connection'), 1)
+  await bis.destroy()
+  t.is(server.listenerCount('connection'), 0)
+})
+
+test('Teardown hyperswarm server', async t => {
   await server.destroy()
-  // t.pass()
+  t.pass()
 })
