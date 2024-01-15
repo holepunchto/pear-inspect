@@ -1,8 +1,8 @@
 # bare-inspector-swarm
 
-Connects a (https://github.com/holepunchto/hyperswarm)[hyperswarm] with a (https://github.com/holepunchto/bare-inspector)[bare-inspector].
+Connects a [hyperswarm](https://github.com/holepunchto/hyperswarm) with a [bare-inspector](https://github.com/holepunchto/bare-inspector).
 
-Instead of using `node` to run this, you are required to run with (https://github.com/holepunchto/bare)[bare].
+Instead of using `node` to run this, you are required to run with [bare](https://github.com/holepunchto/bare).
 
 ## Installation
 
