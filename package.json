@@ -1,0 +1,22 @@
+{
+  "name": "bare-inspector-swarm",
+  "version": "1.0.0",
+  "description": "Layer between a hyperswarm and a bare-inspector",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && bare test/test.js",
+    "postinstall": "bare-dev install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bare-inspector": "^1.0.0",
+    "hyperswarm": "^4.7.13"
+  },
+  "devDependencies": {
+    "bare-dev": "^0.4.14",
+    "brittle": "^3.3.2",
+    "standard": "^17.1.0"
+  }
+}
