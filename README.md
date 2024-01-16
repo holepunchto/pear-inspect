@@ -10,26 +10,25 @@ npm i @holepunchto/pear-inspect
 
 ## Usage
 
-On the Pear app where insights is needed:
-
-
-Server that will show
+On the app where inspection is needed:
 
 ``` js
 import { Inspect } from 'pear-inspect'
 
 const inspect = new Inspect({ dhtKey })
-await inspect.enable() // Now PI servers can send inspection commands to this
+await inspect.enable() // Only enable, when inspection is needed
 
-// When inspection is no longer needed.
-inspect.disable()
+// When inspection is no longer neededa:
+// await inspect.disable()
 ```
+
+On the server that holds the connected Inspector clients, and shows the inspection calls:
 
 ``` js
 import { Server } from 'pear-inspect'
 
 const inspectorServer = new Server(dhtKey)
-await inspectorServer.start() // When client connect to this server, it can inspect them
+await inspectorServer.start()
 
 inspectorServer.on('client', client => {
   const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
@@ -37,63 +36,49 @@ inspectorServer.on('client', client => {
 })
 ....
 
+// When server needs to shut down:
+// await inspectorServer.stop()
 ```
 
+## Methods
 
-``` js
-import PearInspect from '@holepunchto/pear-inspect'
+### new Inspector({ swarm, dhtKey })
 
-const pi = new PearInspect({ dhtKey: sharedInspectDhtKey })
-await pi.enable() // Only do this when/if inspection is required
+Inspector that connects to an Inspector Server in a hyperswarm, and allows inspection into this process.
 
-// When inspection is no longer required
-await pi.disable()
-```
-
-On the other side:
-
-``` js
-import PearInspect from '@holepuchto/pear-inspect'
-
-const pi = new PearInspect({ dhtKey: sharedInspectDhtKey })
-
-const res = await pi.post('Runtime.evaluation', { expression: '1 + 2' })
-console.log(res)
-/*
-{
-  result: {
-    type: 'number',
-    value: 3,
-    description: '3'
-  }
-}
-*/
-```
-
-### Methods
-
-#### constructur({ swarm, dhtKey })
-
-Pass either a `swarm` or a `dhtKey`.
-
-If passing a `dhtKey` then a hyperswarm will be created, and when calling `disable()` then it will be destroyed.
+Either pass a `dhtKey` to allow the Inspector to create/destroy the hyperswarm instance, or pass a `swarm` if this is handled outside of this.
 
 #### async .enable()
 
-This is to be called from the app where insights are needed.
-
-Internally it adds a `connection` listener on the `swarm`.
+Enables inspection. If a `dhtKey` was passed to the constructor then it also creates a hyperswarm instance and connects to that `dhtKey`.
 
 #### async .disable()
 
-This is to be called from the app where insights are needed.
+Disables inspection. If a `dhtKey` was passed to the constructor then it also destroys the hyperswarm instance.
 
-Internally it removes the `connection` listener on the `swarm` and if only a `dhtKey` was passed, then the swarm is destroyed.
+### new Server({ swarm, dhtKey })
 
-#### async .post(...args)
+Server that handles connections from Inspector Clients which can then be inspected. It's an eventemitter and will emit `client` whenever a new client connects.
 
-This is to be called on the other side, where insights are consumed.
+Either pass a `dhtKey` to allow the Inspector to create/destroy the hyperswarm instance, or pass a `swarm` if this is handled outside of this.
 
-The `...args` are sent over the `hyperswarm` and to the inspector running on the other end.
+#### event('client', client => { ... })
 
-Example: `await pearInspect.post('Runtime.evaluate', { expression: '1 + 2' })`
+Event is emitted when a new Inspector Client has connected to the server.
+
+**client.post(...args)***
+
+``` js
+server.on('client', async client => {
+  const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
+  console.log(res)
+})
+```
+
+#### async .start()
+
+Starts the server.
+
+#### async .stop()
+
+Stops the server.
