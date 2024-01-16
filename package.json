@@ -4,7 +4,7 @@
   "description": "Layer between a hyperswarm and a bare-inspector",
   "main": "index.js",
   "scripts": {
-    "test": "standard && bare test/test.js"
+    "test": "standard && node test/test.js"
   },
   "keywords": [],
   "author": "",

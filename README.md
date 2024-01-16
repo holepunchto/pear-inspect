@@ -12,6 +12,34 @@ npm i @holepunchto/pear-inspect
 
 On the Pear app where insights is needed:
 
+
+Server that will show
+
+``` js
+import { Inspect } from 'pear-inspect'
+
+const inspect = new Inspect({ dhtKey })
+await inspect.enable() // Now PI servers can send inspection commands to this
+
+// When inspection is no longer needed.
+inspect.disable()
+```
+
+``` js
+import { Server } from 'pear-inspect'
+
+const inspectorServer = new Server(dhtKey)
+await inspectorServer.start() // When client connect to this server, it can inspect them
+
+inspectorServer.on('client', client => {
+  const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
+  console.log(res)
+})
+....
+
+```
+
+
 ``` js
 import PearInspect from '@holepunchto/pear-inspect'
 

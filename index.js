@@ -1,42 +1,44 @@
 const Hyperswarm = require('hyperswarm')
-const { Session } = require('bare-inspector') // Also support 'inspector' (from pear) and maybe 'node:inspector/promises'
+const { Session } = require('inspector')
+const { EventEmitter } = require('stream')
 
-module.exports = class PearInspect {
+class Inspector {
   constructor ({ swarm, dhtKey }) {
-    const hasNoSwarmOrKey = !swarm && !dhtKey
-    const hasBothSwarmAndKey = swarm && dhtKey
-    if (hasNoSwarmOrKey) throw new Error('pear-inspect needs swarm or dhtKey')
-    if (hasBothSwarmAndKey) throw new Error('pear-inspect needs either swarm or dhtKey, not both')
+    const hasCorrectParams = (swarm && !dhtKey) || (!swarm && dhtKey)
+    if (!hasCorrectParams) throw new Error('pear-inspect needs swarm or dhtKey, not both')
 
     this.swarm = swarm
     this.dhtKey = dhtKey
   }
 
   async enable () {
-    if (!this.swarm) {
-      this.swarm = new Hyperswarm()
-      const discovery = this.swarm.join(this.dhtKey, { server: true, client: true })
-      await discovery.flushed()
-    }
-
     this.connectionHandler = (conn, info) => {
       const session = new Session()
       session.connect()
 
-      this.conn = conn
-      this.conn.on('error', () => session.destroy())
-      this.conn.on('data', async argsBuf => {
+      // Should probably send a message announcing itself (and its app key) to the Server
+
+      conn.on('error', () => session.disconnect())
+      conn.on('data', async argsBuf => {
         const args = JSON.parse(argsBuf)
-        try {
-          const response = await session.post(...args)
-          this.conn.write(Buffer.from(JSON.stringify({ response })))
-        } catch (err) {
-          this.conn.write(Buffer.from(JSON.stringify({ error: err.message })))
-        }
+
+        session.post(...args, (err, response) => {
+          if (err) return conn.write(Buffer.from(JSON.stringify({ error: err.message })))
+
+          conn.write(Buffer.from(JSON.stringify({ response })))
+        })
       })
     }
 
-    this.swarm.on('connection', this.connectionHandler)
+    if (this.swarm) {
+      this.swarm.on('connection', this.connectionHandler)
+      await this.swarm.flush()
+    } else {
+      this.swarm = new Hyperswarm()
+      this.swarm.on('connection', this.connectionHandler)
+      this.swarm.join(this.dhtKey, { server: false, client: true })
+      await this.swarm.flush()
+    }
   }
 
   async disable () {
@@ -51,54 +53,73 @@ module.exports = class PearInspect {
       this.swarm = null
     }
   }
+}
 
-  async post (...args) {
-    // If not already connected, then establish connection to swarm
-    // The connection handler has to be added before joining the swarm
-    const shouldConnect = !this.swarm
+class Server extends EventEmitter {
+  constructor ({ swarm, dhtKey }) {
+    super()
 
-    if (shouldConnect) {
+    const hasCorrectParams = (swarm && !dhtKey) || (!swarm && dhtKey)
+    if (!hasCorrectParams) throw new Error('pear-inspect needs swarm or dhtKey, not both')
+
+    this.swarm = swarm
+    this.dhtKey = dhtKey
+  }
+
+  async start () {
+    const shouldCreateSwarm = !this.swarm
+
+    if (shouldCreateSwarm) {
       this.swarm = new Hyperswarm()
     }
 
-    if (!this.connectionHandler) {
-      console.log('setting connectionHandler')
-      this.connectionHandler = (conn, info) => {
-        console.log('setting connection')
-        this.connection = conn
-      }
-      this.swarm.on('connection', this.connectionHandler)
-      await this.swarm.flush()
+    this.connectionHandler = (conn, info) => {
+      conn.on('error', err => {
+        const shouldIgnoreError = err?.code === 'ECONNRESET'
+        if (!shouldIgnoreError) this.emit('error', err)
+      })
+      this.emit('client', {
+        post: (...args) => {
+          return new Promise((resolve, reject) => {
+            conn.once('data', argsBuf => {
+              const args = JSON.parse(argsBuf)
+              const { response, error } = args
+
+              if (error) return reject(error)
+
+              const isEmptyResponse = JSON.stringify(response) === '{}'
+              resolve(isEmptyResponse ? undefined : response)
+            })
+
+            conn.write(Buffer.from(JSON.stringify(args)))
+          })
+        }
+      })
     }
 
-    if (shouldConnect) {
-      this.swarm.join(this.dhtKey, { server: false, client: true })
-      await this.swarm.flush()
+    this.swarm.on('connection', this.connectionHandler)
+
+    if (shouldCreateSwarm) {
+      const discovery = this.swarm.join(this.dhtKey, { server: true, client: false })
+      await discovery.flushed()
     }
-
-    // Promise that resolves when upon the next data/error event is fired
-    return new Promise((resolve, reject) => {
-      const onNextData = (argsBuf) => {
-        const args = JSON.parse(argsBuf)
-        const { response, error } = args
-
-        this.connection.off('data', onNextData)
-        this.connection.off('error', onNextError)
-
-        if (error) return reject(error)
-
-        const isEmptyResponse = JSON.stringify(response) === '{}'
-        resolve(isEmptyResponse ? undefined : response)
-      }
-      const onNextError = (err) => {
-        this.connection.off('data', onNextData)
-        this.connection.off('error', onNextError)
-        reject(err)
-      }
-
-      this.connection.once('data', onNextData)
-      this.connection.once('error', onNextError)
-      this.connection.write(Buffer.from(JSON.stringify(args)))
-    })
   }
+
+  async stop () {
+    if (!this.connectionHandler) return
+
+    this.swarm.off('connection', this.connectionHandler)
+    this.connectionHandler = null
+
+    const wasStartedWithKey = !!this.dhtKey
+    if (wasStartedWithKey) {
+      await this.swarm.destroy()
+      this.swarm = null
+    }
+  }
+}
+
+module.exports = {
+  Inspector,
+  Server
 }
