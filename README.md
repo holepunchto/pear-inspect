@@ -15,7 +15,7 @@ On the Pear app where insights is needed:
 ``` js
 import PearInspect from '@holepunchto/pear-inspect'
 
-const pi = new PearInspect(sharedInspectTopicKey)
+const pi = new PearInspect({ dhtKey: sharedInspectDhtKey })
 await pi.enable() // Only do this when/if inspection is required
 
 // When inspection is no longer required
@@ -27,7 +27,7 @@ On the other side:
 ``` js
 import PearInspect from '@holepuchto/pear-inspect'
 
-const pi = new PearInspect(sharedInspectTopicKey)
+const pi = new PearInspect({ dhtKey: sharedInspectDhtKey })
 
 const res = await pi.post('Runtime.evaluation', { expression: '1 + 2' })
 console.log(res)
