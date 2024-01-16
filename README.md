@@ -13,13 +13,13 @@ npm i @holepunchto/pear-inspect
 On the app where inspection is needed:
 
 ``` js
-import { Inspect } from 'pear-inspect'
+import { Inspector } from 'pear-inspect'
 
-const inspect = new Inspect({ dhtKey })
-await inspect.enable() // Only enable, when inspection is needed
+const inspector = new Inspector({ dhtKey })
+await inspector.enable() // Only enable, when inspection is needed
 
 // When inspection is no longer neededa:
-// await inspect.disable()
+// await inspector.disable()
 ```
 
 On the server that holds the connected Inspector clients, and shows the inspection calls:
