@@ -1,5 +1,5 @@
 {
-  "name": "bare-inspector-swarm",
+  "name": "pear-inspect",
   "version": "1.0.0",
   "description": "Layer between a hyperswarm and a bare-inspector",
   "main": "index.js",
@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "bare-dev": "^0.4.14",
-    "brittle": "^3.3.2",
+    "brittle": "github:holepunchto/brittle#multi-solo",
     "standard": "^17.1.0"
   }
 }

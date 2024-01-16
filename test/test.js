@@ -1,60 +1,113 @@
 const test = require('brittle')
+const PearInspect = require('../')
 const Hyperswarm = require('hyperswarm')
-const BareInspectorSwarm = require('../')
 
 const randomKey = Array(32).fill(0).map(() => Math.random().toString(36).charAt(2)).join('') // No access to crypto module
-const topicKey = Buffer.from(randomKey)
+const dhtKey = Buffer.from(randomKey)
 
-let server
-let bis
+let insideAppInspector
+let outsideAppInspector
 
-function teardown () {
-  bis.destroy()
-}
+test('Setup', async t => {
+  insideAppInspector = new PearInspect({ dhtKey })
+  outsideAppInspector = new PearInspect({ dhtKey })
 
-test('setup hyperswarm server', async t => {
-  server = new Hyperswarm()
-  const discovery = server.join(topicKey, { server: true, client: false })
+  await insideAppInspector.enable()
+})
+
+test('Inspector evaluates correctly', async t => {
+  t.plan(3)
+
+  const response = await outsideAppInspector.post('Runtime.evaluate', { expression: '1 + 2' })
+  const { result: { type, value, description } } = response
+  t.is(type, 'number')
+  t.is(value, 3)
+  t.is(description, '3')
+})
+
+test('Post with errornous code rejects promise', async t => {
+  t.plan(1)
+  t.exception(async () => {
+    await outsideAppInspector.post('incorrect_code')
+  })
+})
+
+test('Inspector with no return value', async t => {
+  t.plan(1)
+
+  const response = await outsideAppInspector.post('Runtime.discardConsoleEntries')
+  t.absent(response)
+})
+
+test('Several calls with different return values to ensure order works', async t => {
+  t.plan(10)
+
+  const { result: { value: value0 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 0' })
+  const { result: { value: value1 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 1' })
+  const { result: { value: value2 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 2' })
+  const { result: { value: value3 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 3' })
+  const { result: { value: value4 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 4' })
+  const { result: { value: value5 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 5' })
+  const { result: { value: value6 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 6' })
+  const { result: { value: value7 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 7' })
+  const { result: { value: value8 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 8' })
+  const { result: { value: value9 } } = await outsideAppInspector.post('Runtime.evaluate', { expression: '0 + 9' })
+
+  t.is(value0, 0)
+  t.is(value1, 1)
+  t.is(value2, 2)
+  t.is(value3, 3)
+  t.is(value4, 4)
+  t.is(value5, 5)
+  t.is(value6, 6)
+  t.is(value7, 7)
+  t.is(value8, 8)
+  t.is(value9, 9)
+})
+
+test('Teardown', async t => {
+  await insideAppInspector.disable()
+  await outsideAppInspector.disable()
+})
+
+test('Pass neither swarm nor dhtKey, throws error', t => {
+  t.plan(1)
+  t.exception(() => {
+    new PearInspect({}) // eslint-disable-line no-new
+  })
+})
+
+test('Pass bth swarm and dhtKey, throws error', t => {
+  t.plan(1)
+  t.exception(() => {
+    new PearInspect({ // eslint-disable-line no-new
+      swarm: 'a hyperswarm object',
+      dhtKey
+    })
+  })
+})
+
+test('Use own swarm objects', async t => {
+  t.plan(3)
+
+  const insideAppHs = new Hyperswarm()
+  const discovery = insideAppHs.join(dhtKey, { server: true, client: false })
   await discovery.flushed()
 
-  t.pass()
-})
+  const outsideAppHs = new Hyperswarm()
+  await outsideAppHs.join(dhtKey, { server: false, client: true })
 
-test('inspector can evaluate', async t => {
-  t.teardown(teardown)
-  t.plan(3)
-  bis = new BareInspectorSwarm(server)
+  const insideAppPI = new PearInspect({ swarm: insideAppHs })
+  const outsideAppPI = new PearInspect({ swarm: outsideAppHs })
 
-  const client = new Hyperswarm()
-  client.on('close', err => {
-    console.log('client close', err)
-  })
-  client.on('connection', (conn, info) => {
-    conn.on('data', async data => {
-      const { result: { type, value, description } } = JSON.parse(data)
-      t.is(type, 'number')
-      t.is(value, 3)
-      t.is(description, '3')
-      client.destroy()
-    })
+  await insideAppPI.enable()
+  const { result } = await outsideAppPI.post('Runtime.evaluate', { expression: '1 + 2 ' })
+  t.ok(result)
 
-    conn.write(Buffer.from(JSON.stringify(['Runtime.evaluate', { expression: '1 + 2' }])))
-  })
+  t.is(insideAppHs.listenerCount('connection'), 1)
+  await insideAppPI.disable()
+  t.is(insideAppHs.listenerCount('connection'), 0)
 
-  client.join(topicKey, { server: false, client: true })
-  await client.flush()
-})
-
-test('Calling destroy removes listener', async t => {
-  t.plan(2)
-  bis = new BareInspectorSwarm(server)
-
-  t.is(server.listenerCount('connection'), 1)
-  await bis.destroy()
-  t.is(server.listenerCount('connection'), 0)
-})
-
-test('Teardown hyperswarm server', async t => {
-  await server.destroy()
-  t.pass()
+  await insideAppHs.destroy()
+  await outsideAppHs.destroy()
 })
