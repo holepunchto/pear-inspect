@@ -1,8 +1,7 @@
 const Hyperswarm = require('hyperswarm')
 const { Session } = require('inspector')
-const { EventEmitter } = require('stream')
 
-class Inspector {
+module.exports = class Inspect {
   constructor ({ swarm, dhtKey }) {
     const hasCorrectParams = (swarm && !dhtKey) || (!swarm && dhtKey)
     if (!hasCorrectParams) throw new Error('pear-inspect needs swarm or dhtKey, not both')
@@ -30,43 +29,19 @@ class Inspector {
       })
     }
 
-    if (this.swarm) {
+    const shouldCreateSwarm = !this.swarm
+    if (!shouldCreateSwarm) {
       this.swarm.on('connection', this.connectionHandler)
-      await this.swarm.flush()
     } else {
       this.swarm = new Hyperswarm()
       this.swarm.on('connection', this.connectionHandler)
       this.swarm.join(this.dhtKey, { server: false, client: true })
-      await this.swarm.flush()
     }
+
+    await this.swarm.flush()
   }
 
-  async disable () {
-    if (!this.connectionHandler) return
-
-    this.swarm.off('connection', this.connectionHandler)
-    this.connectionHandler = null
-
-    const wasStartedWithKey = !!this.dhtKey
-    if (wasStartedWithKey) {
-      await this.swarm.destroy()
-      this.swarm = null
-    }
-  }
-}
-
-class Server extends EventEmitter {
-  constructor ({ swarm, dhtKey }) {
-    super()
-
-    const hasCorrectParams = (swarm && !dhtKey) || (!swarm && dhtKey)
-    if (!hasCorrectParams) throw new Error('pear-inspect needs swarm or dhtKey, not both')
-
-    this.swarm = swarm
-    this.dhtKey = dhtKey
-  }
-
-  async start () {
+  async serve (clientHandler) {
     const shouldCreateSwarm = !this.swarm
 
     if (shouldCreateSwarm) {
@@ -78,7 +53,8 @@ class Server extends EventEmitter {
         const shouldIgnoreError = err?.code === 'ECONNRESET'
         if (!shouldIgnoreError) this.emit('error', err)
       })
-      this.emit('client', {
+
+      clientHandler({
         post: (...args) => {
           return new Promise((resolve, reject) => {
             conn.once('data', argsBuf => {
@@ -105,7 +81,7 @@ class Server extends EventEmitter {
     }
   }
 
-  async stop () {
+  async destroy () {
     if (!this.connectionHandler) return
 
     this.swarm.off('connection', this.connectionHandler)
@@ -117,9 +93,4 @@ class Server extends EventEmitter {
       this.swarm = null
     }
   }
-}
-
-module.exports = {
-  Inspector,
-  Server
 }

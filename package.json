@@ -10,7 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bare-inspector": "^1.0.0",
     "hyperswarm": "^4.7.13"
   },
   "devDependencies": {

@@ -12,59 +12,58 @@ npm i @holepunchto/pear-inspect
 
 On the app where inspection is needed:
 
+
 ``` js
-import { Inspector } from 'pear-inspect'
+import Inspect from 'pear-inspect'
 
-const inspector = new Inspector({ dhtKey })
-await inspector.enable() // Only enable, when inspection is needed
+const inspect = new Inspect({ dhtKey })
+await inspect.enable()
 
-// When inspection is no longer neededa:
-// await inspector.disable()
+// When inspection is no longer needed:
+// await inspect.destroy()
 ```
 
-On the server that holds the connected Inspector clients, and shows the inspection calls:
+On the server that shows the clients:
 
 ``` js
-import { Server } from 'pear-inspect'
+import Inspect from 'pear-inspect'
 
-const inspectorServer = new Server(dhtKey)
-await inspectorServer.start()
-
-inspectorServer.on('client', client => {
+const inspect = new Inspect({ dhtKey })
+inspect.serve(async client => {
   const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
   console.log(res)
+  /*
+    {
+      result: {
+        type: 'number',
+        value: 3,
+        description: '3'
+      }
+    }
+  */
 })
-....
 
-// When server needs to shut down:
-// await inspectorServer.stop()
+// When the server should stop:
+// await inspect.destroy()
 ```
 
 ## Methods
 
-### new Inspector({ swarm, dhtKey })
+### new Inspect({ swarm, dhtKey })
 
-Inspector that connects to an Inspector Server in a hyperswarm, and allows inspection into this process.
+Create new Inspect that can either inspect into the running process or act as a server that the inspectors connect to.
 
-Either pass a `dhtKey` to allow the Inspector to create/destroy the hyperswarm instance, or pass a `swarm` if this is handled outside of this.
+Either pass a `dhtKey` to allow the Inspect to create and handle the hyperswarm logic, or pass a `swarm` if this is handled outside of this.
 
 #### async .enable()
 
 Enables inspection. If a `dhtKey` was passed to the constructor then it also creates a hyperswarm instance and connects to that `dhtKey`.
 
-#### async .disable()
+### async .serve(client => { ... })
 
-Disables inspection. If a `dhtKey` was passed to the constructor then it also destroys the hyperswarm instance.
+Start server, where the client handler is called every time a new client enables inspection.
 
-### new Server({ swarm, dhtKey })
-
-Server that handles connections from Inspector Clients which can then be inspected. It's an eventemitter and will emit `client` whenever a new client connects.
-
-Either pass a `dhtKey` to allow the Inspector to create/destroy the hyperswarm instance, or pass a `swarm` if this is handled outside of this.
-
-#### event('client', client => { ... })
-
-Event is emitted when a new Inspector Client has connected to the server.
+The passed `client` has a post method that enables inspection on the client side:
 
 **client.post(...args)***
 
@@ -75,10 +74,6 @@ server.on('client', async client => {
 })
 ```
 
-#### async .start()
+#### async .destroy()
 
-Starts the server.
-
-#### async .stop()
-
-Stops the server.
+Disables inspection and stops serving. If a `dhtKey` was passed to the constructor then it also destroys the hyperswarm instance.
