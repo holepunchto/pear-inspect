@@ -137,10 +137,10 @@ test('Get messages from the AppInspector that was not sent by the Client', async
   t.teardown(teardown)
   t.plan(3)
 
-  appInspector = new AppInspector({ inspector, debug: true })
+  appInspector = new AppInspector({ inspector })
   const { publicKey } = await appInspector.enable()
 
-  client = new Client({ publicKey, debug: true })
+  client = new Client({ publicKey })
   client.once('message', async ({ id, method, params }) => {
     // `Runtime.executionContextCreated` happens as a side effect to calling `Runtime.enable`, but is not a direct response (i.e. `id` is not set)
     t.is(method, 'Runtime.executionContextCreated')
