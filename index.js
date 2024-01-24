@@ -48,7 +48,7 @@ class AppInspector {
           if (err) {
             socket.write(JSON.stringify({ id, error: err }))
           } else {
-            socket.write(JSON.stringify({ id, result: result.result }))
+            socket.write(JSON.stringify({ id, result }))
           }
         })
       })
