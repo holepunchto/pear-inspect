@@ -1,96 +1,115 @@
-const Hyperswarm = require('hyperswarm')
-const { Session } = require('inspector')
+const HyperDht = require('hyperdht')
+const { EventEmitter } = require('events')
 
-module.exports = class Inspect {
-  constructor ({ swarm, dhtKey }) {
-    const hasCorrectParams = (swarm && !dhtKey) || (!swarm && dhtKey)
-    if (!hasCorrectParams) throw new Error('pear-inspect needs swarm or dhtKey, not both')
+class AppInspector {
+  constructor ({ dhtServer, keyPair, inspector }) {
+    const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
+    if (!inspector) throw new Error('AppInspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
+    if (dhtServer && hasKeys) throw new Error('AppInspector constructor cannot take both dhtServer and keyPair')
 
-    this.swarm = swarm
-    this.dhtKey = dhtKey
+    this.inspector = inspector
+    this.dhtServer = dhtServer || null
+    this.publicKey = keyPair?.publicKey || null
+    this.secretKey = keyPair?.secretKey || null
+    this.dhtServerHandledExternally = !!dhtServer
+    this.stopping = false
   }
 
   async enable () {
-    this.connectionHandler = (conn, info) => {
-      const session = new Session()
-      session.connect()
+    const shouldCreateServer = !this.dhtServer
+    const shouldCreateKeyPair = shouldCreateServer && !this.publicKey
 
-      // Should probably send a message announcing itself (and its app key) to the Server
+    if (shouldCreateKeyPair) {
+      const keyPair = HyperDht.keyPair()
+      this.publicKey = keyPair.publicKey
+      this.secretKey = keyPair.secretKey
+    }
 
-      conn.on('error', () => session.disconnect())
-      conn.on('data', async argsBuf => {
-        const args = JSON.parse(argsBuf)
+    if (shouldCreateServer) {
+      this.dht = new HyperDht()
+      this.dhtServer = this.dht.createServer()
+    }
 
-        session.post(...args, (err, response) => {
-          if (err) return conn.write(Buffer.from(JSON.stringify({ error: err.message })))
+    this.connectionHandler = socket => {
+      const { Session } = this.inspector
+      this.session = new Session()
+      this.session.connect()
 
-          conn.write(Buffer.from(JSON.stringify({ response })))
+      this.session.on('inspectorNotification', msg => {
+        socket.write(JSON.stringify(msg))
+      })
+      socket.on('error', err => {
+        if (!this.stopping) throw new Error(err)
+      })
+      socket.on('data', async data => {
+        const { id, method, params } = JSON.parse(data)
+
+        this.session.post(method, params, (err, result) => {
+          if (err) {
+            socket.write(JSON.stringify({ id, error: err }))
+          } else {
+            socket.write(JSON.stringify({ id, result: result.result }))
+          }
         })
       })
     }
 
-    const shouldCreateSwarm = !this.swarm
-    if (!shouldCreateSwarm) {
-      this.swarm.on('connection', this.connectionHandler)
-    } else {
-      this.swarm = new Hyperswarm()
-      this.swarm.on('connection', this.connectionHandler)
-      this.swarm.join(this.dhtKey, { server: false, client: true })
-    }
+    this.dhtServer.on('connection', this.connectionHandler)
 
-    await this.swarm.flush()
+    if (shouldCreateServer) {
+      const keyPair = {
+        publicKey: this.publicKey,
+        secretKey: this.secretKey
+      }
+      await this.dhtServer.listen(keyPair)
+      return keyPair
+    }
   }
 
-  async serve (clientHandler) {
-    const shouldCreateSwarm = !this.swarm
+  async disable () {
+    if (!this.connectionHandler || this.stopping) return
 
-    if (shouldCreateSwarm) {
-      this.swarm = new Hyperswarm()
+    this.stopping = true
+    this.dhtServer.off('connection', this.connectionHandler)
+    this.connectionHandler = null
+    this.session.disconnect()
+    this.session = null
+
+    if (!this.dhtServerHandledExternally) {
+      await this.dht.destroy()
+      this.dht = null
+      this.dhtServer = null
     }
+  }
+}
 
-    this.connectionHandler = (conn, info) => {
-      conn.on('error', err => {
-        const shouldIgnoreError = err?.code === 'ECONNRESET'
-        if (!shouldIgnoreError) this.emit('error', err)
-      })
+class Client extends EventEmitter {
+  constructor ({ publicKey }) {
+    super()
 
-      clientHandler({
-        post: (...args) => {
-          return new Promise((resolve, reject) => {
-            conn.once('data', argsBuf => {
-              const args = JSON.parse(argsBuf)
-              const { response, error } = args
+    const hasCorrectParams = !!publicKey
+    if (!hasCorrectParams) throw new Error('Client constructor needs publicKey to connect to the hyperdht stream')
 
-              if (error) return reject(error)
+    this.dhtClient = new HyperDht()
+    this.peerStream = this.dhtClient.connect(publicKey)
+    this.peerStream.on('data', data => this.emit('message', JSON.parse(data)))
+  }
 
-              const isEmptyResponse = JSON.stringify(response) === '{}'
-              resolve(isEmptyResponse ? undefined : response)
-            })
-
-            conn.write(Buffer.from(JSON.stringify(args)))
-          })
-        }
-      })
-    }
-
-    this.swarm.on('connection', this.connectionHandler)
-
-    if (shouldCreateSwarm) {
-      const discovery = this.swarm.join(this.dhtKey, { server: true, client: false })
-      await discovery.flushed()
-    }
+  send ({ id, method, params }) {
+    this.peerStream.write(JSON.stringify({ id, method, params }))
   }
 
   async destroy () {
-    if (!this.connectionHandler) return
+    if (!this.dhtClient) return
 
-    this.swarm.off('connection', this.connectionHandler)
-    this.connectionHandler = null
-
-    const wasStartedWithKey = !!this.dhtKey
-    if (wasStartedWithKey) {
-      await this.swarm.destroy()
-      this.swarm = null
-    }
+    await this.peerStream.destroy()
+    await this.dhtClient.destroy()
+    this.dhtClient = null
+    this.peerStream = null
   }
+}
+
+module.exports = {
+  AppInspector,
+  Client
 }

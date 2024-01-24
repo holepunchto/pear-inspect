@@ -1,143 +1,157 @@
 const test = require('brittle')
-const Inspect = require('../')
-const Hyperswarm = require('hyperswarm')
+const { AppInspector, Client } = require('../')
+const HyperDht = require('hyperdht')
+const inspector = require('inspector/promises')
 
-let server
-let inspector
-const randomKey = Array(32).fill(0).map(() => Math.random().toString(36).charAt(2)).join('') // No access to crypto module
-const dhtKey = Buffer.from(randomKey)
+let appInspector
+let client
 
 async function teardown () {
-  await inspector.destroy()
-  await server.destroy()
+  await appInspector.disable()
+  await client.destroy()
 }
 
 test('Inspector evaluates correctly', async t => {
   t.teardown(teardown)
-  t.plan(3)
+  t.plan(5)
+  appInspector = new AppInspector({ inspector })
+  const { publicKey } = await appInspector.enable()
 
-  server = new Inspect({ dhtKey })
-  inspector = new Inspect({ dhtKey })
-
-  await server.serve(async client => {
-    const { result: { type, value, description } } = await client.post('Runtime.evaluate', { expression: '1 + 2' })
+  client = new Client({ publicKey })
+  client.once('message', ({ id, result, error }) => {
+    const { type, value, description } = result
+    t.is(id, 1)
+    t.absent(error)
     t.is(type, 'number')
     t.is(value, 3)
     t.is(description, '3')
   })
 
-  await inspector.enable()
+  client.send({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
 })
 
-test('Post with errornous code rejects promise', async t => {
+test('Message with errornous code returns error', async t => {
+  t.teardown(teardown)
+  t.plan(3)
+
+  appInspector = new AppInspector({ inspector })
+  const { publicKey } = await appInspector.enable()
+
+  client = new Client({ publicKey })
+  client.once('message', ({ id, result, error }) => {
+    t.is(id, 1)
+    t.absent(result)
+    t.is(error.code, 'ERR_INSPECTOR_COMMAND')
+  })
+
+  client.send({
+    id: 1,
+    method: 'incorrect_code'
+  })
+})
+
+test('Message with no return value', async t => {
   t.teardown(teardown)
   t.plan(1)
 
-  server = new Inspect({ dhtKey })
-  inspector = new Inspect({ dhtKey })
+  appInspector = new AppInspector({ inspector })
+  const { publicKey } = await appInspector.enable()
 
-  await server.serve(async client => {
-    await t.exception(async () => {
-      await client.post('incorrect_code')
-    })
+  client = new Client({ publicKey })
+  client.on('message', ({ result }) => {
+    t.absent(result)
   })
-
-  await inspector.enable()
-})
-
-test('Inspector with no return value', async t => {
-  t.teardown(teardown)
-  t.plan(1)
-
-  server = new Inspect({ dhtKey })
-  inspector = new Inspect({ dhtKey })
-
-  await server.serve(async client => {
-    const response = await client.post('Runtime.discardConsoleEntries')
-    t.absent(response)
+  client.send({
+    method: 'Runtime.discardConsoleEntries',
+    params: {}
   })
-
-  await inspector.enable()
 })
 
 test('Several calls with different return values to ensure order works', async t => {
   t.teardown(teardown)
   t.plan(10)
 
-  server = new Inspect({ dhtKey })
-  inspector = new Inspect({ dhtKey })
+  appInspector = new AppInspector({ inspector })
+  const { publicKey } = await appInspector.enable()
 
-  await server.serve(async client => {
-    const { result: { value: value0 } } = await client.post('Runtime.evaluate', { expression: '0 + 0' })
-    const { result: { value: value1 } } = await client.post('Runtime.evaluate', { expression: '0 + 1' })
-    const { result: { value: value2 } } = await client.post('Runtime.evaluate', { expression: '0 + 2' })
-    const { result: { value: value3 } } = await client.post('Runtime.evaluate', { expression: '0 + 3' })
-    const { result: { value: value4 } } = await client.post('Runtime.evaluate', { expression: '0 + 4' })
-    const { result: { value: value5 } } = await client.post('Runtime.evaluate', { expression: '0 + 5' })
-    const { result: { value: value6 } } = await client.post('Runtime.evaluate', { expression: '0 + 6' })
-    const { result: { value: value7 } } = await client.post('Runtime.evaluate', { expression: '0 + 7' })
-    const { result: { value: value8 } } = await client.post('Runtime.evaluate', { expression: '0 + 8' })
-    const { result: { value: value9 } } = await client.post('Runtime.evaluate', { expression: '0 + 9' })
-
-    t.is(value0, 0)
-    t.is(value1, 1)
-    t.is(value2, 2)
-    t.is(value3, 3)
-    t.is(value4, 4)
-    t.is(value5, 5)
-    t.is(value6, 6)
-    t.is(value7, 7)
-    t.is(value8, 8)
-    t.is(value9, 9)
+  client = new Client({ publicKey })
+  client.on('message', ({ id, result }) => {
+    const { value } = result
+    t.is(id, value)
   })
-
-  await inspector.enable()
+  client.send({ id: 0, method: 'Runtime.evaluate', params: { expression: '0 + 0' } })
+  client.send({ id: 1, method: 'Runtime.evaluate', params: { expression: '0 + 1' } })
+  client.send({ id: 2, method: 'Runtime.evaluate', params: { expression: '0 + 2' } })
+  client.send({ id: 3, method: 'Runtime.evaluate', params: { expression: '0 + 3' } })
+  client.send({ id: 4, method: 'Runtime.evaluate', params: { expression: '0 + 4' } })
+  client.send({ id: 5, method: 'Runtime.evaluate', params: { expression: '0 + 5' } })
+  client.send({ id: 6, method: 'Runtime.evaluate', params: { expression: '0 + 6' } })
+  client.send({ id: 7, method: 'Runtime.evaluate', params: { expression: '0 + 7' } })
+  client.send({ id: 8, method: 'Runtime.evaluate', params: { expression: '0 + 8' } })
+  client.send({ id: 9, method: 'Runtime.evaluate', params: { expression: '0 + 9' } })
 })
 
-test('Pass neither swarm nor dhtKey, throws error', t => {
+test('publicKey needed for Client', t => {
   t.plan(1)
   t.exception(() => {
-    new Inspect({}) // eslint-disable-line no-new
+    new Client({ }) // eslint-disable-line no-new
   })
 })
 
-test('Pass both swarm and dhtKey, throws error', t => {
+test('inspector needed for AppInspector', t => {
   t.plan(1)
   t.exception(() => {
-    new Inspect({ // eslint-disable-line no-new
-      swarm: 'a hyperswarm object',
-      dhtKey
-    })
+    new AppInspector({ }) // eslint-disable-line no-new
   })
 })
 
-test('Use own swarm objects', async t => {
-  t.plan(5)
+test('Use own hypderdht server for AppInspector', async t => {
+  t.plan(3)
 
-  const serverHs = new Hyperswarm()
-  const discovery = serverHs.join(dhtKey, { server: true, client: false })
-  await discovery.flushed()
+  const keyPair = HyperDht.keyPair()
+  const dht = new HyperDht()
+  const dhtServer = dht.createServer()
+  await dhtServer.listen(keyPair)
+  const appInspector = new AppInspector({ dhtServer, inspector })
+  const res = await appInspector.enable()
+  t.absent(res) // keys aren't returned when handled by self
 
-  const inspectorHs = new Hyperswarm()
-  await inspectorHs.join(dhtKey, { server: false, client: true })
+  client = new Client({ publicKey: keyPair.publicKey })
+  client.once('message', async ({ id, result }) => {
+    t.is(id, 1)
+    t.ok(result.value, 3)
 
-  const server = new Inspect({ swarm: serverHs })
-  await server.serve(async (client) => {
-    const { result } = await client.post('Runtime.evaluate', { expression: '1 + 2 ' })
-    t.ok(result)
-
-    t.is(inspectorHs.listenerCount('connection'), 1)
-    await inspector.destroy()
-    t.is(inspectorHs.listenerCount('connection'), 0)
-
-    t.is(serverHs.listenerCount('connection'), 1)
-    await server.destroy()
-    t.is(serverHs.listenerCount('connection'), 0)
-
-    await inspectorHs.destroy()
-    await serverHs.destroy()
+    await appInspector.disable()
+    await client.destroy()
+    await dht.destroy()
   })
 
-  const inspector = new Inspect({ swarm: inspectorHs })
-  await inspector.enable()
+  client.send({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
+})
+
+test('Get messages from the AppInspector that was not sent by the Client', async t => {
+  t.teardown(teardown)
+  t.plan(3)
+
+  appInspector = new AppInspector({ inspector, debug: true })
+  const { publicKey } = await appInspector.enable()
+
+  client = new Client({ publicKey, debug: true })
+  client.once('message', async ({ id, method, params }) => {
+    // `Runtime.executionContextCreated` happens as a side effect to calling `Runtime.enable`, but is not a direct response (i.e. `id` is not set)
+    t.is(method, 'Runtime.executionContextCreated')
+    t.absent(id)
+    t.ok(params.context)
+    await appInspector.disable()
+    await client.destroy()
+  })
+  client.send({
+    id: 1,
+    method: 'Runtime.enable',
+    params: {}
+  })
 })

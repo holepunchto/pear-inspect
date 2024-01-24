@@ -1,6 +1,8 @@
 # pear-inspect
 
-Connects a [hyperswarm](https://github.com/holepunchto/hyperswarm) with a [bare-inspector](https://github.com/holepunchto/bare-inspector).
+Connects a [hyperdht](https://github.com/holepunchto/hyperdht) with an [bare-inspector](https://github.com/holepunchto/bare-inspector).
+
+Is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
 
 ## Installation
 
@@ -12,68 +14,72 @@ npm i @holepunchto/pear-inspect
 
 On the app where inspection is needed:
 
-
 ``` js
-import Inspect from 'pear-inspect'
+import inspector from 'inspector'
+import { AppInspector } from 'pear-inspect'
 
-const inspect = new Inspect({ dhtKey })
-await inspect.enable()
+const appInspector = new AppInspector({ inspector })
+const { publicKey } = await appInspector.enable() // Pass the public key to the Client
 
 // When inspection is no longer needed:
-// await inspect.destroy()
+// await appInsepctor.disable()
 ```
 
-On the server that shows the clients:
+On the side where you want to debug the remote app:
 
 ``` js
-import Inspect from 'pear-inspect'
+import { Client } from 'pear-inspect'
 
-const inspect = new Inspect({ dhtKey })
-inspect.serve(async client => {
-  const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
-  console.log(res)
+const client = new Client({ publicKey }) // The publicKey that was return from the AppInspector
+client.on('message', ({ id, result, error }) => {
+  console.log(result)
   /*
     {
-      result: {
-        type: 'number',
-        value: 3,
-        description: '3'
-      }
+      type: 'number',
+      value: 3,
+      description: '3'
     }
   */
 })
 
-// When the server should stop:
-// await inspect.destroy()
+client.send({
+  id: 1, // The id is optional, but is used by DevTools as it runs on jsonrpc
+  method: 'Runtime.evaluate',
+  params: { expression: '1 + 2' }
+})
+
+// When the client should stop:
+// await client.destroy()
 ```
 
 ## Methods
 
-### new Inspect({ swarm, dhtKey })
+### new AppInspector({ inspector, dhtServer = null, keyPair = null })
 
-Create new Inspect that can either inspect into the running process or act as a server that the inspectors connect to.
-
-Either pass a `dhtKey` to allow the Inspect to create and handle the hyperswarm logic, or pass a `swarm` if this is handled outside of this.
+Creates new AppInspector that will be able to inspect the process it's currently running.
 
 #### async .enable()
 
-Enables inspection. If a `dhtKey` was passed to the constructor then it also creates a hyperswarm instance and connects to that `dhtKey`.
+Enables inspection, creates a `hyperdht` server and returns a keypair.
 
-### async .serve(client => { ... })
+If a `dhtServer` was passed, then it just attaches a 'connection' handler. If `keyPair` was passed, then this is used when creating the `hyperdht` server.
 
-Start server, where the client handler is called every time a new client enables inspection.
+#### async .disable()
 
-The passed `client` has a post method that enables inspection on the client side:
+Stops inspection and removes any `hypderdht` server.
 
-**client.post(...args)***
+If a `dhtServer` was passed, then it just detaches the 'connection' handler.
 
-``` js
-server.on('client', async client => {
-  const res = await client.post('Runtime.evaluate', { expression: '1 + 2' })
-  console.log(res)
-})
-```
+### new Client({ publicKey })
 
-#### async .destroy()
+Creates new Client that can inspect a remote app.
 
-Disables inspection and stops serving. If a `dhtKey` was passed to the constructor then it also destroys the hyperswarm instance.
+`publicKey` is a `hyperdht` key that it's used to connect to.
+
+#### .send({ id, method, params })
+
+Send a CDP method to the remote app. `id` is optional, but if passed, then it will be returned with the corresponding event.
+
+#### event .on('message', msg => { ... })
+
+Messages from the remote app's inspector. Will contain `id` if that was passed to the corresponding method.
