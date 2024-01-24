@@ -1,0 +1,40 @@
+# This is code for https://sequencediagram.org/
+title How DevTools inspect a User App using Chrome Devtools Protocol (CDP)
+
+participant User App
+participant terminal.js
+participant Sidecar
+participant Pear Inspector
+participant chrome﹕//inspect
+participant DevTools
+
+entryspacing 0.2
+terminal.js->Sidecar:allowInspection(publicKey)
+activate Sidecar
+Sidecar->Sidecar:Add publicKey to list
+terminal.js<--Sidecar:
+deactivate Sidecar
+
+Sidecar<-Pear Inspector:getInspectApps()
+activate Sidecar
+Sidecar-->Pear Inspector:[public keys]
+deactivate Sidecar
+
+Pear Inspector<-chrome﹕//inspect:HTTP GET /json/list
+activate Pear Inspector
+Pear Inspector-->chrome﹕//inspect:[apps]
+deactivate Pear Inspector
+
+Pear Inspector<-DevTools:establish WS connection
+activate DevTools
+activate Pear Inspector
+
+terminal.js<-Pear Inspector:establish hyperdht connection
+activate terminal.js
+User App<-terminal.js:new inspector.Session()
+activate User App
+Pear Inspector<-->DevTools:CDP over WS
+terminal.js<-->Pear Inspector:CDP over hyperdht
+User App<-->terminal.js:CDP over Inspector
+
+note over User App,DevTools:CDP established between DevTools and User App
