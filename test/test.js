@@ -1,25 +1,25 @@
 const test = require('brittle')
-const { AppInspector, Client } = require('../')
+const { Inspector, Session } = require('../')
 const HyperDht = require('hyperdht')
-const inspector = require('inspector/promises')
+const nodeInspector = require('inspector')
 
-let appInspector
-let client
+let inspector
+let session
 
 async function teardown () {
-  await appInspector.disable()
-  await client.destroy()
+  await inspector.disable()
+  await session.destroy()
 }
 
 test('Inspector evaluates correctly', async t => {
   t.teardown(teardown)
   t.plan(5)
-  appInspector = new AppInspector({ inspector })
-  const { publicKey } = await appInspector.enable()
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
 
-  client = new Client({ publicKey })
-  client.once('message', ({ id, result, error }) => {
-    const { type, value, description } = result
+  session = new Session({ publicKey })
+  session.once('message', ({ id, result, error }) => {
+    const { result: { type, value, description } } = result
     t.is(id, 1)
     t.absent(error)
     t.is(type, 'number')
@@ -27,7 +27,8 @@ test('Inspector evaluates correctly', async t => {
     t.is(description, '3')
   })
 
-  client.send({
+  session.connect()
+  session.post({
     id: 1,
     method: 'Runtime.evaluate',
     params: { expression: '1 + 2' }
@@ -38,34 +39,36 @@ test('Message with errornous code returns error', async t => {
   t.teardown(teardown)
   t.plan(3)
 
-  appInspector = new AppInspector({ inspector })
-  const { publicKey } = await appInspector.enable()
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
 
-  client = new Client({ publicKey })
-  client.once('message', ({ id, result, error }) => {
+  session = new Session({ publicKey })
+  session.once('message', ({ id, result, error }) => {
     t.is(id, 1)
     t.absent(result)
     t.is(error.code, 'ERR_INSPECTOR_COMMAND')
   })
 
-  client.send({
+  session.connect()
+  session.post({
     id: 1,
     method: 'incorrect_code'
   })
 })
 
-test('Message with no return value', async t => {
+test('Message with no return value, returns message with empty object', async t => {
   t.teardown(teardown)
   t.plan(1)
 
-  appInspector = new AppInspector({ inspector })
-  const { publicKey } = await appInspector.enable()
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
 
-  client = new Client({ publicKey })
-  client.on('message', ({ result }) => {
-    t.absent(result)
+  session = new Session({ publicKey })
+  session.on('message', ({ result }) => {
+    t.is(Object.keys(result).length, 0)
   })
-  client.send({
+  session.connect()
+  session.post({
     method: 'Runtime.discardConsoleEntries',
     params: {}
   })
@@ -75,83 +78,208 @@ test('Several calls with different return values to ensure order works', async t
   t.teardown(teardown)
   t.plan(10)
 
-  appInspector = new AppInspector({ inspector })
-  const { publicKey } = await appInspector.enable()
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
 
-  client = new Client({ publicKey })
-  client.on('message', ({ id, result }) => {
-    const { value } = result
+  session = new Session({ publicKey })
+  session.on('message', ({ id, result }) => {
+    const { result: { value } } = result
     t.is(id, value)
   })
-  client.send({ id: 0, method: 'Runtime.evaluate', params: { expression: '0 + 0' } })
-  client.send({ id: 1, method: 'Runtime.evaluate', params: { expression: '0 + 1' } })
-  client.send({ id: 2, method: 'Runtime.evaluate', params: { expression: '0 + 2' } })
-  client.send({ id: 3, method: 'Runtime.evaluate', params: { expression: '0 + 3' } })
-  client.send({ id: 4, method: 'Runtime.evaluate', params: { expression: '0 + 4' } })
-  client.send({ id: 5, method: 'Runtime.evaluate', params: { expression: '0 + 5' } })
-  client.send({ id: 6, method: 'Runtime.evaluate', params: { expression: '0 + 6' } })
-  client.send({ id: 7, method: 'Runtime.evaluate', params: { expression: '0 + 7' } })
-  client.send({ id: 8, method: 'Runtime.evaluate', params: { expression: '0 + 8' } })
-  client.send({ id: 9, method: 'Runtime.evaluate', params: { expression: '0 + 9' } })
+  session.connect()
+  session.post({ id: 0, method: 'Runtime.evaluate', params: { expression: '0 + 0' } })
+  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '0 + 1' } })
+  session.post({ id: 2, method: 'Runtime.evaluate', params: { expression: '0 + 2' } })
+  session.post({ id: 3, method: 'Runtime.evaluate', params: { expression: '0 + 3' } })
+  session.post({ id: 4, method: 'Runtime.evaluate', params: { expression: '0 + 4' } })
+  session.post({ id: 5, method: 'Runtime.evaluate', params: { expression: '0 + 5' } })
+  session.post({ id: 6, method: 'Runtime.evaluate', params: { expression: '0 + 6' } })
+  session.post({ id: 7, method: 'Runtime.evaluate', params: { expression: '0 + 7' } })
+  session.post({ id: 8, method: 'Runtime.evaluate', params: { expression: '0 + 8' } })
+  session.post({ id: 9, method: 'Runtime.evaluate', params: { expression: '0 + 9' } })
 })
 
-test('publicKey needed for Client', t => {
+test('publicKey needed for Session', t => {
   t.plan(1)
   t.exception(() => {
-    new Client({ }) // eslint-disable-line no-new
+    new Session({ }) // eslint-disable-line no-new
   })
 })
 
-test('inspector needed for AppInspector', t => {
+test('inspector needed for Inspector', t => {
   t.plan(1)
   t.exception(() => {
-    new AppInspector({ }) // eslint-disable-line no-new
+    new Inspector({ }) // eslint-disable-line no-new
   })
 })
 
-test('Use own hypderdht server for AppInspector', async t => {
+test('Use own hypderdht server for Inspector', async t => {
   t.plan(3)
 
   const keyPair = HyperDht.keyPair()
   const dht = new HyperDht()
   const dhtServer = dht.createServer()
   await dhtServer.listen(keyPair)
-  const appInspector = new AppInspector({ dhtServer, inspector })
-  const res = await appInspector.enable()
+  const inspector = new Inspector({ dhtServer, inspector: nodeInspector })
+  const res = await inspector.enable()
   t.absent(res) // keys aren't returned when handled by self
 
-  client = new Client({ publicKey: keyPair.publicKey })
-  client.once('message', async ({ id, result }) => {
+  session = new Session({ publicKey: keyPair.publicKey })
+  session.once('message', async ({ id, result }) => {
     t.is(id, 1)
-    t.ok(result.value, 3)
+    t.ok(result.result.value, 3)
 
-    await appInspector.disable()
-    await client.destroy()
+    await inspector.disable()
+    await session.destroy()
     await dht.destroy()
   })
 
-  client.send({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
+  session.connect()
+  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
 })
 
-test('Get messages from the AppInspector that was not sent by the Client', async t => {
+test('Get messages from the Inspector that was not sent by the Session', async t => {
   t.teardown(teardown)
   t.plan(3)
 
-  appInspector = new AppInspector({ inspector })
-  const { publicKey } = await appInspector.enable()
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
 
-  client = new Client({ publicKey })
-  client.once('message', async ({ id, method, params }) => {
+  session = new Session({ publicKey })
+  session.once('message', async ({ id, method, params }) => {
     // `Runtime.executionContextCreated` happens as a side effect to calling `Runtime.enable`, but is not a direct response (i.e. `id` is not set)
     t.is(method, 'Runtime.executionContextCreated')
     t.absent(id)
     t.ok(params.context)
-    await appInspector.disable()
-    await client.destroy()
+    await inspector.disable()
+    await session.destroy()
   })
-  client.send({
+  session.connect()
+  session.post({
     id: 1,
     method: 'Runtime.enable',
     params: {}
+  })
+})
+
+test('Creating session, emits an info event', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
+
+  session = new Session({ publicKey })
+  session.on('info', ({ filename }) => {
+    t.ok(filename.endsWith('pear-inspect/test/test.js'))
+  })
+})
+
+test('Calling .post(), ensure that "info" is emitted, then "message"', async t => {
+  t.teardown(teardown)
+  t.plan(2)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
+
+  let calls = 0
+  session = new Session({ publicKey })
+  session.on('info', () => {
+    calls += 1
+    t.is(calls, 1)
+  })
+  session.on('message', () => {
+    calls += 1
+    t.is(calls, 2)
+  })
+  session.connect()
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
+})
+
+test('Calling .post() before .connect() throws', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
+
+  session = new Session({ publicKey })
+
+  t.exception(() => {
+    session.post({
+      id: 1,
+      method: 'Runtime.evaluate',
+      params: { expression: '1 + 2' }
+    })
+  })
+})
+
+test('.post() after a .disconnect() throws', async t => {
+  t.teardown(teardown)
+  t.plan(2)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
+
+  session = new Session({ publicKey })
+  session.on('message', () => t.pass())
+
+  session.connect()
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
+  session.disconnect()
+  t.exception(() => {
+    session.post({
+      id: 1,
+      method: 'Runtime.evaluate',
+      params: { expression: '1 + 2' }
+    })
+  })
+})
+
+test('Calling .connect() after a .disconnect() still allows .post()', async t => {
+  t.teardown(teardown)
+  t.plan(2)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const { publicKey } = await inspector.enable()
+
+  session = new Session({ publicKey })
+  session.on('message', () => t.pass())
+
+  session.connect()
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
+
+  session.disconnect()
+  session.connect()
+
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
+})
+
+test('Setting filename overrides the default on', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  inspector = new Inspector({ inspector: nodeInspector, filename: 'foobar.js' })
+  const { publicKey } = await inspector.enable()
+
+  session = new Session({ publicKey })
+  session.on('info', ({ filename }) => {
+    t.is(filename, 'foobar.js')
   })
 })

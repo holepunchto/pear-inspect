@@ -1,12 +1,15 @@
 const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
 
-class AppInspector {
-  constructor ({ dhtServer, keyPair, inspector }) {
-    const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
-    if (!inspector) throw new Error('AppInspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
-    if (dhtServer && hasKeys) throw new Error('AppInspector constructor cannot take both dhtServer and keyPair')
+const VERSION = 1
 
+class Inspector {
+  constructor ({ dhtServer, keyPair, inspector, filename }) {
+    const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
+    if (!inspector) throw new Error('Inspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
+    if (dhtServer && hasKeys) throw new Error('Inspector constructor cannot take both dhtServer and keyPair')
+
+    this.filename = filename || require?.main?.filename
     this.inspector = inspector
     this.dhtServer = dhtServer || null
     this.publicKey = keyPair?.publicKey || null
@@ -32,19 +35,58 @@ class AppInspector {
 
     this.connectionHandler = socket => {
       const { Session } = this.inspector
-      this.session = new Session()
-      this.session.connect()
+      let session = null
 
-      this.session.on('inspectorNotification', msg => {
-        socket.write(JSON.stringify(msg))
-      })
-      socket.on('error', err => {
-        if (!this.stopping) throw new Error(err)
+      let hasReceivedHandshake = false
+      const disconnectSession = () => {
+        if (!session) return
+        const isBareInspector = !session.disconnect
+        if (isBareInspector) {
+          session.destroy()
+        } else {
+          session.disconnect()
+        }
+      }
+      socket.setKeepAlive(5000)
+      socket.on('close', disconnectSession)
+      socket.on('error', () => {
+        // Ignore all errors. Running pear-inspect should not affect the surrounding app
       })
       socket.on('data', async data => {
-        const { id, method, params } = JSON.parse(data)
+        if (!hasReceivedHandshake) {
+          hasReceivedHandshake = true
 
-        this.session.post(method, params, (err, result) => {
+          const { pearInspectVersion } = JSON.parse(data)
+          const isRemoteVersionTooNew = pearInspectVersion > VERSION
+          if (isRemoteVersionTooNew) {
+            console.error('[pear-inspect] The remote end has a newer version than this one. Destroying socket.')
+            socket.destroy()
+            return
+          }
+
+          socket.write(JSON.stringify({
+            pearInspectVersion: VERSION,
+            filename: this.filename
+          }))
+          return
+        }
+
+        const { id, method, params, pearInspectMethod } = JSON.parse(data)
+
+        // This is a way to handle sending information about thread back
+        if (pearInspectMethod === 'connect') {
+          session = new Session()
+          session.connect()
+          session.on('inspectorNotification', msg => socket.write(JSON.stringify(msg)))
+          return
+        }
+
+        if (pearInspectMethod === 'disconnect') {
+          disconnectSession()
+          return
+        }
+
+        session?.post(method, params, (err, result) => {
           if (err) {
             socket.write(JSON.stringify({ id, error: err }))
           } else {
@@ -72,8 +114,6 @@ class AppInspector {
     this.stopping = true
     this.dhtServer.off('connection', this.connectionHandler)
     this.connectionHandler = null
-    this.session.disconnect()
-    this.session = null
 
     if (!this.dhtServerHandledExternally) {
       await this.dht.destroy()
@@ -83,33 +123,75 @@ class AppInspector {
   }
 }
 
-class Client extends EventEmitter {
+class Session extends EventEmitter {
   constructor ({ publicKey }) {
     super()
 
     const hasCorrectParams = !!publicKey
-    if (!hasCorrectParams) throw new Error('Client constructor needs publicKey to connect to the hyperdht stream')
+    if (!hasCorrectParams) throw new Error('Session constructor needs publicKey to connect to the hyperdht stream')
 
+    let hasReceivedHandshake = false
+    this.connected = false
     this.dhtClient = new HyperDht()
-    this.peerStream = this.dhtClient.connect(publicKey)
-    this.peerStream.on('data', data => this.emit('message', JSON.parse(data)))
+    this.dhtSocket = this.dhtClient.connect(publicKey)
+    this.dhtSocket.write(JSON.stringify({ pearInspectVersion: VERSION }))
+    this.dhtSocket.setKeepAlive(5000)
+    this.dhtSocket.on('data', data => {
+      if (!hasReceivedHandshake) {
+        hasReceivedHandshake = true
+
+        const { pearInspectVersion, filename } = JSON.parse(data)
+        const isRemoteVersionTooNew = pearInspectVersion > VERSION
+        if (isRemoteVersionTooNew) {
+          console.error('[pear-inspect] The remote end has a newer version than this one. Destroying socket.')
+          this.dhtSocket.destroy()
+        } else {
+          this.emit('info', { filename })
+        }
+
+        return
+      }
+
+      this.emit('message', JSON.parse(data))
+    })
+    this.dhtSocket.on('error', err => {
+      const ignoreError = err?.message?.includes('connection timed out')
+      if (ignoreError) return
+      this.emit('error', err)
+    })
+    this.dhtSocket.on('close', () => {
+      this.emit('close')
+      this.destroy()
+    })
   }
 
-  send ({ id, method, params }) {
-    this.peerStream.write(JSON.stringify({ id, method, params }))
+  post (params) {
+    if (!this.connected) throw new Error('Session is not connected. .connect() needs to be called prior to .post()')
+
+    this.dhtSocket?.write(JSON.stringify(params))
+  }
+
+  connect () {
+    this.connected = true
+    this.dhtSocket?.write(JSON.stringify({ pearInspectMethod: 'connect' }))
+  }
+
+  disconnect () {
+    this.connected = false
+    this.dhtSocket?.write(JSON.stringify({ pearInspectMethod: 'disconnect' }))
   }
 
   async destroy () {
     if (!this.dhtClient) return
 
-    await this.peerStream.destroy()
+    await this.dhtSocket.destroy()
     await this.dhtClient.destroy()
     this.dhtClient = null
-    this.peerStream = null
+    this.dhtSocket = null
   }
 }
 
 module.exports = {
-  AppInspector,
-  Client
+  Inspector,
+  Session
 }

@@ -1,8 +1,10 @@
 # pear-inspect
 
-Connects a [hyperdht](https://github.com/holepunchto/hyperdht) with an [bare-inspector](https://github.com/holepunchto/bare-inspector).
+Enable debugging of Pear apps. This is especially useful when running `terminal` or `mobile` Pear apps. The apps can be running on a fully remote system, making it easier helping others debug their apps.
 
-Is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
+It's essentially a link between [hyperdht](https://github.com/holepunchto/hyperdht) and [bare-inspector](https://github.com/holepunchto/bare-inspector).
+
+This is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
 
 ## Installation
 
@@ -10,53 +12,83 @@ Is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
 npm i @holepunchto/pear-inspect
 ```
 
+## Usage with Pear Pulse
+
+One of the reasons for using `pear-inspect` is to be able to debug with Pear Pulse. To do so, all that's needed is to do this, in the app you want to inspect:
+
+``` js
+import nodeInspector from 'inspector'
+import { Inspector } from 'pear-inspect'
+
+const inspector = new Inspector({ inspector: nodeInspector })
+const { publicKey } = await inspector.enable()
+
+console.log(`Add this key to Pear Pulse: ${publicKey.toString('hex')}`)
+```
+
 ## Usage
+
+The main thing to understand is that:
+
+- On the app which that needs to be debuggged, use the `Inspector` class.
+- On the other side (where you e.g. run your DevTools), use the `Session` class. This interface is similar to how Node's Inspector works with connect/disconnect/post methods.
 
 On the app where inspection is needed:
 
 ``` js
-import inspector from 'inspector'
-import { AppInspector } from 'pear-inspect'
+import nodeInspector from 'inspector'
+import { Inspector } from 'pear-inspect'
 
-const appInspector = new AppInspector({ inspector })
-const { publicKey } = await appInspector.enable() // Pass the public key to the Client
+const inspector = new Inspector({ inspector: nodeInspector })
+const { publicKey } = await inspector.enable() // Pass the public key to the Session
 
 // When inspection is no longer needed:
-// await appInsepctor.disable()
+// await inspector.disable()
 ```
 
 On the side where you want to debug the remote app:
 
 ``` js
-import { Client } from 'pear-inspect'
+import { Session } from 'pear-inspect'
 
-const client = new Client({ publicKey }) // The publicKey that was return from the AppInspector
-client.on('message', ({ id, result, error }) => {
+const session = new Session({ publicKey }) // The publicKey that was return from the Inspector
+session.on('info', ({ filename }) => {
+  console.log('This is the main entrypoint', filename)
+})
+session.on('message', ({ id, result, error }) => {
   console.log(result)
   /*
     {
-      type: 'number',
-      value: 3,
-      description: '3'
+      result: {
+        type: 'number',
+        value: 3,
+        description: '3'
+      }
     }
   */
 })
 
-client.send({
+session.connect()
+session.post({
   id: 1, // The id is optional, but is used by DevTools as it runs on jsonrpc
   method: 'Runtime.evaluate',
   params: { expression: '1 + 2' }
 })
 
-// When the client should stop:
-// await client.destroy()
+// When the session is no longer required (e.g. when the DevTools window is closed)
+// session.disconnect()
+
+// If the hyperdht connection should be completely stopped:
+// await session.destroy()
 ```
 
 ## Methods
 
-### new AppInspector({ inspector, dhtServer = null, keyPair = null })
+### new Inspector({ inspector, dhtServer = null, keyPair = null, filename = null })
 
-Creates new AppInspector that will be able to inspect the process it's currently running.
+Creates new Inspector that will be able to inspect the process it's currently running.
+
+If `filename` is omitted then it will be set to `require.main.filename`
 
 #### async .enable()
 
@@ -70,15 +102,29 @@ Stops inspection and removes any `hypderdht` server.
 
 If a `dhtServer` was passed, then it just detaches the 'connection' handler.
 
-### new Client({ publicKey })
+### new Session({ publicKey })
 
-Creates new Client that can inspect a remote app.
+Creates new Session that can inspect a remote app.
 
 `publicKey` is a `hyperdht` key that it's used to connect to.
 
-#### .send({ id, method, params })
+#### .connect()
+
+Start the remote inspection. `disconnect()` can be called when inspection is no longer needed.
+
+#### .disconnect()
+
+Close the remote inspection. `.connect()` can be called again if more inspection is needed.
+
+#### .post({ id, method, params })
 
 Send a CDP method to the remote app. `id` is optional, but if passed, then it will be returned with the corresponding event.
+
+Throws an error if `.connect()` has not been called
+
+#### event .on('info', ({ filename }) => { ... })
+
+When connected to the Inspector on the remote side, this event is emitted where it's possible to see which filename is the main entrypoint for the Pear app.
 
 #### event .on('message', msg => { ... })
 
