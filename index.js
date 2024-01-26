@@ -46,6 +46,7 @@ class Inspector {
         } else {
           session.disconnect()
         }
+        session = null
       }
       socket.setKeepAlive(5000)
       socket.on('close', disconnectSession)
