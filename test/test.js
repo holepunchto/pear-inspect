@@ -127,11 +127,29 @@ test('Use own hypderdht server for Inspector', async t => {
   session = new Session({ publicKey: keyPair.publicKey })
   session.once('message', async ({ id, result }) => {
     t.is(id, 1)
-    t.ok(result.result.value, 3)
+    t.is(result.result.value, 3)
 
     await inspector.disable()
     await session.destroy()
     await dht.destroy()
+  })
+
+  session.connect()
+  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
+})
+
+test('Use own keyPair', async t => {
+  t.teardown(teardown)
+  t.plan(2)
+
+  const keyPair = HyperDht.keyPair()
+  inspector = new Inspector({ keyPair, inspector: nodeInspector })
+  await inspector.enable()
+
+  session = new Session({ publicKey: keyPair.publicKey })
+  session.once('message', async ({ id, result }) => {
+    t.is(id, 1)
+    t.is(result.result.value, 3)
   })
 
   session.connect()
