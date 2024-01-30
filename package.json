@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "b4a": "^1.6.4",
     "hyperdht": "^6.11.5"
   },
   "devDependencies": {

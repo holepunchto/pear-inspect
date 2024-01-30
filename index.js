@@ -1,5 +1,6 @@
 const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
+const b4a = require('b4a')
 
 const VERSION = 2
 
@@ -36,7 +37,7 @@ class Inspector {
       this.dht = new HyperDht()
       this.dhtServer = this.dht.createServer({
         firewall (remotePublicKey, remote) {
-          return remotePublicKey.toString('hex') !== this.publicKey.toString('hex')
+          return !b4a.equals(remotePublicKey, this.publicKey)
         }
       })
     }
