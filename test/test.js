@@ -11,29 +11,6 @@ async function teardown () {
   await session.destroy()
 }
 
-// test.solo('foo', async t => {
-//   t.plan(5)
-//   inspector = new Inspector({ inspector: nodeInspector })
-//   const inspectorKey = await inspector.enable()
-//   // console.log('inspectorKey', inspectorKey)
-//   session = new Session({ inspectorKey })
-//   session.once('message', ({ id, result, error }) => {
-//     const { result: { type, value, description } } = result
-//     t.is(id, 1)
-//     t.absent(error)
-//     t.is(type, 'number')
-//     t.is(value, 3)
-//     t.is(description, '3')
-//   })
-
-//   session.connect()
-//   session.post({
-//     id: 1,
-//     method: 'Runtime.evaluate',
-//     params: { expression: '1 + 2' }
-//   })
-// })
-
 test('Inspector evaluates correctly', async t => {
   t.teardown(teardown)
   t.plan(5)

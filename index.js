@@ -5,7 +5,6 @@ const VERSION = 2
 
 class Inspector {
   constructor ({ dhtServer, inspectorKey, inspector, filename }) {
-    // const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
     if (!inspector) throw new Error('Inspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
     if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
 
