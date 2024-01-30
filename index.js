@@ -27,6 +27,10 @@ class Inspector {
       this.inspectorKey = seed
       this.publicKey = keyPair.publicKey
       this.secretKey = keyPair.secretKey
+    } else {
+      const keyPair = HyperDht.keyPair(this.inspectorKey)
+      this.publicKey = keyPair.publicKey
+      this.secretKey = keyPair.secretKey
     }
 
     if (shouldCreateServer) {
@@ -128,18 +132,22 @@ class Inspector {
 }
 
 class Session extends EventEmitter {
-  constructor ({ inspectorKey }) {
+  constructor ({ inspectorKey, publicKey }) {
     super()
 
-    const hasCorrectParams = !!inspectorKey
-    if (!hasCorrectParams) throw new Error('Session constructor needs inspectorKey to connect to the hyperdht stream')
-
-    const keyPair = HyperDht.keyPair(inspectorKey)
+    const hasCorrectParams = (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
+    if (!hasCorrectParams) throw new Error('Session constructor needs inspectorKey or publicKey to connect to the hyperdht stream')
 
     let hasReceivedHandshake = false
     this.connected = false
     this.dhtClient = new HyperDht()
-    this.dhtSocket = this.dhtClient.connect(keyPair.publicKey, { keyPair })
+    this.dhtSocket = null
+    if (inspectorKey) {
+      const keyPair = HyperDht.keyPair(inspectorKey)
+      this.dhtSocket = this.dhtClient.connect(keyPair.publicKey, { keyPair })
+    } else {
+      this.dhtSocket = this.dhtClient.connect(publicKey)
+    }
     this.dhtSocket.write(JSON.stringify({ pearInspectVersion: VERSION }))
     this.dhtSocket.setKeepAlive(5000)
     this.dhtSocket.on('data', data => {
