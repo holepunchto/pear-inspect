@@ -21,9 +21,9 @@ import nodeInspector from 'inspector'
 import { Inspector } from 'pear-inspect'
 
 const inspector = new Inspector({ inspector: nodeInspector })
-const { publicKey } = await inspector.enable()
+const inspectorKey = await inspector.enable()
 
-console.log(`Add this key to Pear Pulse: ${publicKey.toString('hex')}`)
+console.log(`Add this key to Pear Runtime: ${inspectorKey.toString('hex')}`)
 ```
 
 ## Usage
@@ -40,7 +40,7 @@ import nodeInspector from 'inspector'
 import { Inspector } from 'pear-inspect'
 
 const inspector = new Inspector({ inspector: nodeInspector })
-const { publicKey } = await inspector.enable() // Pass the public key to the Session
+const inspectorKey = await inspector.enable() // Pass the public key to the Session
 
 // When inspection is no longer needed:
 // await inspector.disable()
@@ -51,7 +51,7 @@ On the side where you want to debug the remote app:
 ``` js
 import { Session } from 'pear-inspect'
 
-const session = new Session({ publicKey }) // The publicKey that was return from the Inspector
+const session = new Session({ inspectorKey }) // The inspectorKey that was return from the Inspector
 session.on('info', ({ filename }) => {
   console.log('This is the main entrypoint', filename)
 })
@@ -84,17 +84,17 @@ session.post({
 
 ## Methods
 
-### new Inspector({ inspector, dhtServer = null, keyPair = null, filename = null })
+### new Inspector({ inspector, dhtServer = null, inspectorKey = null, filename = null })
 
 Creates new Inspector that will be able to inspect the process it's currently running.
 
-If `filename` is omitted then it will be set to `require.main.filename`
+If `filename` is omitted then it will be set to `require.main.filename`.
 
 #### async .enable()
 
-Enables inspection, creates a `hyperdht` server and returns a keypair.
+Enables inspection, creates a `hyperdht` server and returns `inspectorKey`.
 
-If a `dhtServer` was passed, then it just attaches a 'connection' handler. If `keyPair` was passed, then this is used when creating the `hyperdht` server.
+If a `dhtServer` was passed, then it just attaches a 'connection' handler. If `inspectorKey` was passed, then this is used as a seed to generate a key pair which is then used for creating the `hyperdht` server.
 
 #### async .disable()
 
@@ -102,11 +102,11 @@ Stops inspection and removes any `hypderdht` server.
 
 If a `dhtServer` was passed, then it just detaches the 'connection' handler.
 
-### new Session({ publicKey })
+### new Session({ inspectorKey = null, publicKey = null })
 
 Creates new Session that can inspect a remote app.
 
-`publicKey` is a `hyperdht` key that it's used to connect to.
+Either `inspectorKey` or `publicKey` has to be used. Generally you will use `inspectorKey`, but you can use `publicKey` if you want to have more control.
 
 #### .connect()
 
