@@ -22,25 +22,18 @@ class Inspector {
     const shouldGenerateSeed = shouldCreateServer && !this.inspectorKey
 
     if (shouldGenerateSeed) {
-      const seed = HyperDht.keyPair().secretKey.slice(32)
-      const keyPair = HyperDht.keyPair(seed)
+      const keyPair = HyperDht.keyPair()
+      const seed = keyPair.secretKey.subarray(0, 32)
       this.inspectorKey = seed
       this.publicKey = keyPair.publicKey
       this.secretKey = keyPair.secretKey
-      console.log(`[inspector] inspectorKey=${this.inspectorKey.toString('hex')}`)
-      console.log(`[inspector] publicKey=${this.publicKey.toString('hex')}`)
-      console.log(`[inspector] secretKey=${this.secretKey.toString('hex')}`)
     }
 
     if (shouldCreateServer) {
       this.dht = new HyperDht()
       this.dhtServer = this.dht.createServer({
         firewall (remotePublicKey, remote) {
-          console.log(`[inspector] firewall. remotePublicKey=${remotePublicKey.toString('hex')}`)
-          console.log(`[inspector] firewall.       PublicKey=${this.publicKey.toString('hex')}`)
-          console.log(remote)
-          // skal maaske vende rundt :shrugemoji:
-          return remotePublicKey !== this.publicKey
+          return remotePublicKey.toString('hex') !== this.publicKey.toString('hex')
         }
       })
     }
@@ -141,13 +134,12 @@ class Session extends EventEmitter {
     const hasCorrectParams = !!inspectorKey
     if (!hasCorrectParams) throw new Error('Session constructor needs inspectorKey to connect to the hyperdht stream')
 
+    const keyPair = HyperDht.keyPair(inspectorKey)
+
     let hasReceivedHandshake = false
-    const { publicKey } = HyperDht.keyPair(inspectorKey)
-    console.log(`[session] inspectorKey=${inspectorKey.toString('hex')}`)
-    console.log(`[session] publicKey=${publicKey.toString('hex')}`)
     this.connected = false
     this.dhtClient = new HyperDht()
-    this.dhtSocket = this.dhtClient.connect(publicKey)
+    this.dhtSocket = this.dhtClient.connect(keyPair.publicKey, { keyPair })
     this.dhtSocket.write(JSON.stringify({ pearInspectVersion: VERSION }))
     this.dhtSocket.setKeepAlive(5000)
     this.dhtSocket.on('data', data => {
