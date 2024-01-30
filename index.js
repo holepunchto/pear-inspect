@@ -1,40 +1,51 @@
 const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
 
-const VERSION = 1
+const VERSION = 2
 
 class Inspector {
-  constructor ({ dhtServer, keyPair, inspector, filename }) {
-    const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
+  constructor ({ dhtServer, inspectorKey, inspector, filename }) {
+    // const hasKeys = keyPair && (keyPair.publicKey && keyPair.secretKey)
     if (!inspector) throw new Error('Inspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
-    if (dhtServer && hasKeys) throw new Error('Inspector constructor cannot take both dhtServer and keyPair')
+    if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
 
     this.filename = filename || require?.main?.filename
     this.inspector = inspector
     this.dhtServer = dhtServer || null
-    this.publicKey = keyPair?.publicKey || null
-    this.secretKey = keyPair?.secretKey || null
+    this.inspectorKey = inspectorKey || null
     this.dhtServerHandledExternally = !!dhtServer
     this.stopping = false
   }
 
   async enable () {
     const shouldCreateServer = !this.dhtServer
-    const shouldCreateKeyPair = shouldCreateServer && !this.publicKey
+    const shouldGenerateSeed = shouldCreateServer && !this.inspectorKey
 
-    if (shouldCreateKeyPair) {
-      const keyPair = HyperDht.keyPair()
+    if (shouldGenerateSeed) {
+      const seed = HyperDht.keyPair().secretKey.slice(32)
+      const keyPair = HyperDht.keyPair(seed)
+      this.inspectorKey = seed
       this.publicKey = keyPair.publicKey
       this.secretKey = keyPair.secretKey
+      console.log(`[inspector] inspectorKey=${this.inspectorKey.toString('hex')}`)
+      console.log(`[inspector] publicKey=${this.publicKey.toString('hex')}`)
+      console.log(`[inspector] secretKey=${this.secretKey.toString('hex')}`)
     }
 
     if (shouldCreateServer) {
       this.dht = new HyperDht()
-      this.dhtServer = this.dht.createServer()
+      this.dhtServer = this.dht.createServer({
+        firewall (remotePublicKey, remote) {
+          console.log(`[inspector] firewall. remotePublicKey=${remotePublicKey.toString('hex')}`)
+          console.log(`[inspector] firewall.       PublicKey=${this.publicKey.toString('hex')}`)
+          console.log(remote)
+          // skal maaske vende rundt :shrugemoji:
+          return remotePublicKey !== this.publicKey
+        }
+      })
     }
 
     this.connectionHandler = socket => {
-      const { Session } = this.inspector
       let session = null
 
       let hasReceivedHandshake = false
@@ -76,7 +87,7 @@ class Inspector {
 
         // This is a way to handle sending information about thread back
         if (pearInspectMethod === 'connect') {
-          session = new Session()
+          session = new this.inspector.Session()
           session.connect()
           session.on('inspectorNotification', msg => socket.write(JSON.stringify(msg)))
           return
@@ -100,12 +111,11 @@ class Inspector {
     this.dhtServer.on('connection', this.connectionHandler)
 
     if (shouldCreateServer) {
-      const keyPair = {
+      await this.dhtServer.listen({
         publicKey: this.publicKey,
         secretKey: this.secretKey
-      }
-      await this.dhtServer.listen(keyPair)
-      return keyPair
+      })
+      return this.inspectorKey
     }
   }
 
@@ -125,13 +135,16 @@ class Inspector {
 }
 
 class Session extends EventEmitter {
-  constructor ({ publicKey }) {
+  constructor ({ inspectorKey }) {
     super()
 
-    const hasCorrectParams = !!publicKey
-    if (!hasCorrectParams) throw new Error('Session constructor needs publicKey to connect to the hyperdht stream')
+    const hasCorrectParams = !!inspectorKey
+    if (!hasCorrectParams) throw new Error('Session constructor needs inspectorKey to connect to the hyperdht stream')
 
     let hasReceivedHandshake = false
+    const { publicKey } = HyperDht.keyPair(inspectorKey)
+    console.log(`[session] inspectorKey=${inspectorKey.toString('hex')}`)
+    console.log(`[session] publicKey=${publicKey.toString('hex')}`)
     this.connected = false
     this.dhtClient = new HyperDht()
     this.dhtSocket = this.dhtClient.connect(publicKey)
