@@ -15,9 +15,9 @@ test('Inspector evaluates correctly', async t => {
   t.teardown(teardown)
   t.plan(5)
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.once('message', ({ id, result, error }) => {
     const { result: { type, value, description } } = result
     t.is(id, 1)
@@ -40,9 +40,9 @@ test('Message with errornous code returns error', async t => {
   t.plan(3)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.once('message', ({ id, result, error }) => {
     t.is(id, 1)
     t.absent(result)
@@ -61,9 +61,9 @@ test('Message with no return value, returns message with empty object', async t 
   t.plan(1)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('message', ({ result }) => {
     t.is(Object.keys(result).length, 0)
   })
@@ -79,9 +79,9 @@ test('Several calls with different return values to ensure order works', async t
   t.plan(10)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('message', ({ id, result }) => {
     const { result: { value } } = result
     t.is(id, value)
@@ -121,8 +121,8 @@ test('Use own hypderdht server for Inspector', async t => {
   const dhtServer = dht.createServer()
   await dhtServer.listen(keyPair)
   const inspector = new Inspector({ dhtServer, inspector: nodeInspector })
-  const res = await inspector.enable()
-  t.absent(res) // keys aren't returned when handled by self
+  const inspectorKey = await inspector.enable()
+  t.absent(inspectorKey) // keys aren't returned when handled by self
 
   session = new Session({ publicKey: keyPair.publicKey })
   session.once('message', async ({ id, result }) => {
@@ -138,15 +138,15 @@ test('Use own hypderdht server for Inspector', async t => {
   session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
 })
 
-test('Use own keyPair', async t => {
+test('Use own inspectorKey', async t => {
   t.teardown(teardown)
   t.plan(2)
 
-  const keyPair = HyperDht.keyPair()
-  inspector = new Inspector({ keyPair, inspector: nodeInspector })
+  const inspectorKey = HyperDht.keyPair().secretKey.subarray(0, 32)
+  inspector = new Inspector({ inspectorKey, inspector: nodeInspector })
   await inspector.enable()
 
-  session = new Session({ publicKey: keyPair.publicKey })
+  session = new Session({ inspectorKey })
   session.once('message', async ({ id, result }) => {
     t.is(id, 1)
     t.is(result.result.value, 3)
@@ -161,9 +161,9 @@ test('Get messages from the Inspector that was not sent by the Session', async t
   t.plan(3)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.once('message', async ({ id, method, params }) => {
     // `Runtime.executionContextCreated` happens as a side effect to calling `Runtime.enable`, but is not a direct response (i.e. `id` is not set)
     t.is(method, 'Runtime.executionContextCreated')
@@ -185,9 +185,9 @@ test('Creating session, emits an info event', async t => {
   t.plan(1)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('info', ({ filename }) => {
     t.ok(filename.endsWith('pear-inspect/test/test.js'))
   })
@@ -198,10 +198,10 @@ test('Calling .post(), ensure that "info" is emitted, then "message"', async t =
   t.plan(2)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
   let calls = 0
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('info', () => {
     calls += 1
     t.is(calls, 1)
@@ -223,9 +223,9 @@ test('Calling .post() before .connect() throws', async t => {
   t.plan(1)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
 
   t.exception(() => {
     session.post({
@@ -241,9 +241,9 @@ test('.post() after a .disconnect() throws', async t => {
   t.plan(2)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('message', () => t.pass())
 
   session.connect()
@@ -267,9 +267,9 @@ test('Calling .connect() after a .disconnect() still allows .post()', async t =>
   t.plan(2)
 
   inspector = new Inspector({ inspector: nodeInspector })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('message', () => t.pass())
 
   session.connect()
@@ -294,9 +294,9 @@ test('Setting filename overrides the default on', async t => {
   t.plan(1)
 
   inspector = new Inspector({ inspector: nodeInspector, filename: 'foobar.js' })
-  const { publicKey } = await inspector.enable()
+  const inspectorKey = await inspector.enable()
 
-  session = new Session({ publicKey })
+  session = new Session({ inspectorKey })
   session.on('info', ({ filename }) => {
     t.is(filename, 'foobar.js')
   })
