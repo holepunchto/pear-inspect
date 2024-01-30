@@ -1,6 +1,6 @@
 {
   "name": "@holepunchto/pear-inspect",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Layer between a hyperswarm and a bare-inspector",
   "main": "index.js",
   "scripts": {
