@@ -9,7 +9,7 @@ This is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
 ## Installation
 
 ```
-npm i @holepunchto/pear-inspect
+npm install pear-inspect
 ```
 
 ## Usage with Pear Pulse
