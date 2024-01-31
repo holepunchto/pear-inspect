@@ -12,9 +12,9 @@ This is a part of how to debug Pear apps using Chrome Devtools Protocol (CDP).
 npm install pear-inspect
 ```
 
-## Usage with Pear Pulse
+## Usage with pear://runtime
 
-One of the reasons for using `pear-inspect` is to be able to debug with Pear Pulse. To do so, all that's needed is to do this, in the app you want to inspect:
+One of the reasons for using `pear-inspect` is to be able to debug with the pear://runtime application. To do so, all that's needed is to do this, in the app you want to inspect:
 
 ``` js
 import nodeInspector from 'inspector'
