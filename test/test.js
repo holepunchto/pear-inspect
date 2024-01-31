@@ -106,11 +106,11 @@ test('publicKey needed for Session', t => {
   })
 })
 
-test('inspector needed for Inspector', t => {
+test('inspector is optional', t => {
   t.plan(1)
-  t.exception(() => {
-    new Inspector({ }) // eslint-disable-line no-new
-  })
+
+  const pearInspector = new Inspector({ })
+  t.ok(pearInspector.inspector === nodeInspector)
 })
 
 test('Use own hypderdht server for Inspector', async t => {

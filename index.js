@@ -6,8 +6,14 @@ const VERSION = 2
 
 class Inspector {
   constructor ({ dhtServer, inspectorKey, inspector, filename }) {
-    if (!inspector) throw new Error('Inspector constructor needs inspector to run, like "inspector/promises" or "bare-inspector"')
     if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
+    if (!inspector) {
+      try {
+        inspector = require('inspector')
+      } catch {
+        throw new Error('Inspector constructor needs inspector to run, like "inspector" or "bare-inspector"')
+      }
+    }
 
     this.filename = filename || require?.main?.filename
     this.inspector = inspector
