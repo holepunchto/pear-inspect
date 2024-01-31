@@ -1,6 +1,6 @@
 {
   "name": "pear-inspect",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Layer between a hyperswarm and a bare-inspector",
   "main": "index.js",
   "files": [
