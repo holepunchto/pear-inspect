@@ -11,7 +11,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "b4a": "^1.6.4",
     "hyperdht": "^6.11.5"
@@ -19,5 +19,13 @@
   "devDependencies": {
     "brittle": "github:holepunchto/brittle#multi-solo",
     "standard": "^17.1.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holepunchto/pear-inspect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/holepunchto/pear-inspect/issues"
+  },
+  "homepage": "https://github.com/holepunchto/pear-inspect#readme"
 }
