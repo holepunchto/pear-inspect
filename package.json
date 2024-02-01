@@ -1,7 +1,7 @@
 {
   "name": "pear-inspect",
   "version": "1.0.3",
-  "description": "Layer between a hyperswarm and a bare-inspector",
+  "description": "Debug Pear applications using DevTools",
   "main": "index.js",
   "files": [
     "index.js"
@@ -17,7 +17,7 @@
     "hyperdht": "^6.11.5"
   },
   "devDependencies": {
-    "brittle": "github:holepunchto/brittle#multi-solo",
+    "brittle": "^3.3.2",
     "standard": "^17.1.0"
   },
   "repository": {
