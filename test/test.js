@@ -7,8 +7,8 @@ let inspector
 let session
 
 async function teardown () {
-  await inspector.disable()
-  await session.destroy()
+  await inspector?.disable()
+  await session?.destroy()
 }
 
 test('Inspector evaluates correctly', async t => {
@@ -300,4 +300,12 @@ test('Setting filename overrides the default on', async t => {
   session.on('info', ({ filename }) => {
     t.is(filename, 'foobar.js')
   })
+})
+
+test('All parameters are optional', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  inspector = new Inspector()
+  t.ok(inspector)
 })

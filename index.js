@@ -5,7 +5,7 @@ const b4a = require('b4a')
 const VERSION = 2
 
 class Inspector {
-  constructor ({ dhtServer, inspectorKey, inspector, filename }) {
+  constructor ({ dhtServer, inspectorKey, inspector, filename } = {}) {
     if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
     if (!inspector) {
       try {
