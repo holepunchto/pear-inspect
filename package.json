@@ -7,16 +7,26 @@
     "index.js"
   ],
   "scripts": {
-    "test": "standard && node test/test.js"
+    "test": "standard && node test/test.js",
+    "test-bare": "bare test/test.js"
   },
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
+  "imports": {
+    "events": {
+      "bare": "bare-events"
+    },
+    "inspector": {
+      "bare": "bare-inspector"
+    }
+  },
   "dependencies": {
     "b4a": "^1.6.4",
     "hyperdht": "^6.11.5"
   },
   "devDependencies": {
+    "bare-inspector": "^1.1.2",
     "brittle": "^3.3.2",
     "standard": "^17.1.0"
   },

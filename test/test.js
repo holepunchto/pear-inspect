@@ -46,7 +46,7 @@ test('Message with errornous code returns error', async t => {
   session.once('message', ({ id, result, error }) => {
     t.is(id, 1)
     t.absent(result)
-    t.is(error.code, 'ERR_INSPECTOR_COMMAND')
+    t.ok(error.code === 'ERR_INSPECTOR_COMMAND' || error.code === -32601) // Node or Bare
   })
 
   session.connect()
