@@ -15,10 +15,12 @@
   "license": "Apache-2.0",
   "imports": {
     "events": {
-      "bare": "bare-events"
+      "bare": "bare-events",
+      "default": "events"
     },
     "inspector": {
-      "bare": "bare-inspector"
+      "bare": "bare-inspector",
+      "default": "inspector"
     }
   },
   "dependencies": {
