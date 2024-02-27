@@ -15,7 +15,7 @@ class Inspector {
       }
     }
 
-    this.filename = filename || require?.main?.filename
+    this.filename = filename || require?.main?.filename || 'default-filename'
     this.inspector = inspector
     this.dhtServer = dhtServer || null
     this.inspectorKey = inspectorKey || null
@@ -161,6 +161,11 @@ class Session extends EventEmitter {
         hasReceivedHandshake = true
 
         const { pearInspectVersion, filename } = JSON.parse(data)
+        if (!filename) {
+          console.error('[pear-inspect] The remote end did not specify a filename. Destroying socket.')
+          this.dhtSocket.destroy()
+        }
+
         const isRemoteVersionTooNew = pearInspectVersion > VERSION
         if (isRemoteVersionTooNew) {
           console.error('[pear-inspect] The remote end has a newer version than this one. Destroying socket.')
