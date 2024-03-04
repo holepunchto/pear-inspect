@@ -137,7 +137,7 @@ class Inspector {
     }
   }
 
-  async takeHeapSnapshot (fileLocation = null) {
+  async writeHeapSnapshot (fileLocation = null) {
     // Based on https://nodejs.org/api/inspector.html#heap-profiler
     if (!fileLocation) {
       fileLocation = `${this.filename}-${Date.now()}.heapsnapshot`
