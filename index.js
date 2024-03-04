@@ -1,6 +1,7 @@
 const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
 const b4a = require('b4a')
+const { openSync, writeSync, closeSync } = require('fs')
 
 const VERSION = 2
 
@@ -134,6 +135,41 @@ class Inspector {
       this.dht = null
       this.dhtServer = null
     }
+  }
+
+  async writeHeapSnapshot (fileLocation = null) {
+    // Based on https://nodejs.org/api/inspector.html#heap-profiler
+    if (!fileLocation) {
+      fileLocation = `${this.filename}-${Date.now()}.heapsnapshot`
+    }
+
+    const session = new this.inspector.Session()
+    const file = openSync(fileLocation, 'w')
+    try {
+      session.connect()
+      try {
+        session.on('HeapProfiler.addHeapSnapshotChunk', (msg) => {
+          if (!msg.params?.chunk) {
+            // Note: unsure if this can ever happen, but just in case
+            return
+          }
+          writeSync(file, b4a.from(msg.params.chunk))
+        })
+
+        await session.post('HeapProfiler.takeHeapSnapshot', null)
+      } finally {
+        const isBareInspector = !session.disconnect
+        if (isBareInspector) {
+          session.destroy()
+        } else {
+          session.disconnect()
+        }
+      }
+    } finally {
+      closeSync(file)
+    }
+
+    return fileLocation
   }
 }
 

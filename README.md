@@ -122,6 +122,16 @@ Send a CDP method to the remote app. `id` is optional, but if passed, then it wi
 
 Throws an error if `.connect()` has not been called
 
+#### .writeHeapSnapshot(fileLocation = null)
+
+Create a heap snapshot and write it to a file.
+
+`fileLocation` defaults to `<filename>-<timestamp>.heapsnapshot` in the current working directory.
+
+Note: ensure sufficient RAM is available (at least double the RAM taken up by the process)
+
+Note: this method can cause event-loop lag, because it writes sync to the file system.
+
 #### event .on('info', ({ filename }) => { ... })
 
 When connected to the Inspector on the remote side, this event is emitted where it's possible to see which filename is the main entrypoint for the Pear app.

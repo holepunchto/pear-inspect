@@ -2,6 +2,9 @@ const test = require('brittle')
 const { Inspector, Session } = require('../')
 const HyperDht = require('hyperdht')
 const nodeInspector = require('inspector')
+const getTmpDir = require('test-tmp')
+const path = require('path')
+const fs = require('fs')
 
 let inspector
 let session
@@ -308,4 +311,16 @@ test('All parameters are optional', async t => {
 
   inspector = new Inspector()
   t.ok(inspector)
+})
+
+test('Can create a heapdump', async t => {
+  t.teardown(teardown)
+  const dir = await getTmpDir(t)
+  inspector = new Inspector({ inspector: nodeInspector })
+
+  const loc = path.join(dir, 'heap.heapsnapshot')
+  t.absent(fs.existsSync(loc), 'sanity check')
+
+  await inspector.writeHeapSnapshot(loc)
+  t.ok(fs.existsSync(loc), 'Heapdump written')
 })
