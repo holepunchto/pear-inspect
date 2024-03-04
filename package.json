@@ -21,6 +21,10 @@
     "inspector": {
       "bare": "bare-inspector",
       "default": "inspector"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
     }
   },
   "dependencies": {
@@ -41,6 +45,7 @@
   "homepage": "https://github.com/holepunchto/pear-inspect#readme",
   "optionalDependencies": {
     "bare-events": "^2.2.0",
-    "bare-inspector": "^1.1.2"
+    "bare-inspector": "^1.1.2",
+    "bare-fs": "^2.2.1"
   }
 }
