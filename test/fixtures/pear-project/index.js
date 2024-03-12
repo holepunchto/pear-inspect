@@ -4,4 +4,4 @@
 import { Inspector } from 'pear-inspect'
 
 const inspector = new Inspector()
-console.log(inspector.filename)
+console.log(inspector.filename) // This output is checked in the corresponding test case in /test/test.js
