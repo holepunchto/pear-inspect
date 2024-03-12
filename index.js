@@ -1,6 +1,7 @@
 const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
 const b4a = require('b4a')
+const path = require('path')
 
 const VERSION = 2
 
@@ -15,7 +16,8 @@ class Inspector {
       }
     }
 
-    this.filename = filename || require?.main?.filename
+    const pearFilename = global.Pear && path.join(global.Pear.config.dir, global.Pear.config.main)
+    this.filename = filename || pearFilename || require?.main?.filename || process?.argv?.[1]
     this.inspector = inspector
     this.dhtServer = dhtServer || null
     this.inspectorKey = inspectorKey || null

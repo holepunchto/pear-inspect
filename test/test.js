@@ -2,6 +2,7 @@ const test = require('brittle')
 const { Inspector, Session } = require('../')
 const HyperDht = require('hyperdht')
 const nodeInspector = require('inspector')
+const { spawn } = require('child_process')
 
 let inspector
 let session
@@ -308,4 +309,36 @@ test('All parameters are optional', async t => {
 
   inspector = new Inspector()
   t.ok(inspector)
+})
+
+test('Filename is set for cjs', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+  inspector = new Inspector()
+  t.ok(inspector.filename.endsWith('test/test.js'))
+})
+
+test('Filename is set for mjs', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  const process = spawn('node', ['test/fixtures/module.mjs'])
+  process.stderr.on('data', data => t.fail())
+  process.stdout.on('data', filename => {
+    filename = filename.toString().trim()
+    t.ok(filename.endsWith('/test/fixtures/module.mjs'))
+  })
+})
+
+// This test requires Pear to be installed, so is not run automatically
+test.skip('Filename is set for Pear', async t => {
+  t.teardown(teardown)
+  t.plan(1)
+
+  const process = spawn('pear', ['run', 'test/fixtures/pear-project'])
+  process.stderr.on('data', data => t.fail())
+  process.stdout.on('data', filename => {
+    filename = filename.toString().trim()
+    t.ok(filename.endsWith('/test/fixtures/pear-project/index.js'))
+  })
 })
