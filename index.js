@@ -16,7 +16,7 @@ class Inspector {
       }
     }
 
-    const pearFilename = global.Pear && path.join(global.Pear.config?.dir, global.Pear.config?.main)
+    const pearFilename = global.Pear && path.join(global.Pear.config.dir, global.Pear.config.main)
     this.filename = filename || pearFilename || require?.main?.filename || process?.argv?.[1]
     this.inspector = inspector
     this.dhtServer = dhtServer || null
