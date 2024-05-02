@@ -101,7 +101,7 @@ class Inspector {
             this.console = new this.inspector.Console()
             this.oldGlobalConsole = global.console
             const newConsole = {}
-            for (const method of Object.keys(global.console)) {
+            for (const method of Object.keys(this.console)) {
               console.log(`monkey patching ${method}`)
               newConsole[method] = (...args) => {
                 this.console[method](...args)
