@@ -23,6 +23,8 @@ class Inspector {
     this.inspectorKey = inspectorKey || null
     this.dhtServerHandledExternally = !!dhtServer
     this.stopping = false
+    this.console = null
+    this.oldGlobalConsole = null
   }
 
   async enable () {
@@ -96,8 +98,16 @@ class Inspector {
 
           const isBareInspector = !session.disconnect
           if (isBareInspector) {
-            this.oldConsole = global.console
-            global.console = new this.inspector.Console()
+            this.console = new this.inspector.Console()
+            this.oldGlobalConsole = global.console
+            const newConsole = {}
+            for (const method of Object.keys(global.console)) {
+              newConsole[method] = (...args) => {
+                this.console.apply(this.console, ...args)
+                this.oldGlobalConsole.apply(this.oldGlobalConsole, ...args)
+              }
+            }
+            global.console = newConsole
           }
 
           session.connect()
@@ -107,6 +117,14 @@ class Inspector {
         }
 
         if (pearInspectMethod === 'disconnect') {
+          const isBareInspector = !session.disconnect
+
+          if (isBareInspector) {
+            global.console = this.oldGlobalConsole
+            this.oldGlobalConsole = null
+            this.console = null
+          }
+
           disconnectSession()
           return
         }
