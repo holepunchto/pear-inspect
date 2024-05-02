@@ -103,8 +103,8 @@ class Inspector {
             const newConsole = {}
             for (const method of Object.keys(global.console)) {
               newConsole[method] = (...args) => {
-                this.console.apply(this.console, ...args)
-                this.oldGlobalConsole.apply(this.oldGlobalConsole, ...args)
+                this.console[method](...args)
+                this.oldGlobalConsole[method](...args)
               }
             }
             global.console = newConsole
