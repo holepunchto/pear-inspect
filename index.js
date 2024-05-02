@@ -93,8 +93,16 @@ class Inspector {
         // This is a way to handle sending information about thread back
         if (pearInspectMethod === 'connect') {
           session = new this.inspector.Session()
+
+          const isBareInspector = !session.disconnect
+          if (isBareInspector) {
+            this.oldConsole = global.console
+            global.console = new this.inspector.Console()
+          }
+
           session.connect()
           session.on('inspectorNotification', msg => socket.write(JSON.stringify(msg)))
+
           return
         }
 
