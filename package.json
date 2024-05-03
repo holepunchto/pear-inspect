@@ -25,11 +25,16 @@
     "path": {
       "bare": "bare-path",
       "default": "path"
+    },
+    "child_process": {
+      "bare": "bare-subprocess",
+      "default": "child_process"
     }
   },
   "dependencies": {
     "b4a": "^1.6.4",
-    "hyperdht": "^6.11.5"
+    "hyperdht": "^6.11.5",
+    "which-runtime": "^1.2.0"
   },
   "devDependencies": {
     "brittle": "^3.3.2",
@@ -46,6 +51,7 @@
   "optionalDependencies": {
     "bare-events": "^2.2.0",
     "bare-inspector": "^2.0.0",
-    "bare-path": "^2.1.0"
+    "bare-path": "^2.1.0",
+    "bare-subprocess": "^3.0.0"
   }
 }

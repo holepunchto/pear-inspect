@@ -2,6 +2,7 @@ const HyperDht = require('hyperdht')
 const { EventEmitter } = require('events')
 const b4a = require('b4a')
 const path = require('path')
+const { isBare } = require('which-runtime')
 
 const VERSION = 2
 
@@ -23,7 +24,29 @@ class Inspector {
     this.inspectorKey = inspectorKey || null
     this.dhtServerHandledExternally = !!dhtServer
     this.stopping = false
-    this.console = null
+    this.oldGlobalConsole = null
+  }
+
+  _overrideGlobalConsole () {
+    // Overriding the global.console is needed for bare-inspector (and pear-inspect)
+    // to be able to read logs
+    const bareInspectorConsole = new this.inspector.Console()
+    const newGlobalConsole = {}
+    for (const method of Object.keys(bareInspectorConsole)) {
+      newGlobalConsole[method] = (...args) => {
+        bareInspectorConsole[method](...args)
+        this.oldGlobalConsole[method](...args)
+      }
+    }
+
+    this.oldGlobalConsole = global.console
+    global.console = newGlobalConsole
+  }
+
+  _resetGlobalConsole () {
+    if (!this.oldGlobalConsole) return
+
+    global.console = this.oldGlobalConsole
     this.oldGlobalConsole = null
   }
 
@@ -52,15 +75,17 @@ class Inspector {
       })
     }
 
+    if (isBare) this._overrideGlobalConsole()
+
     this.connectionHandler = socket => {
       let session = null
 
       let hasReceivedHandshake = false
       const disconnectSession = () => {
         if (!session) return
-        const isBareInspector = !session.disconnect
-        if (isBareInspector) {
+        if (isBare) {
           session.destroy()
+          this._resetGlobalConsole()
         } else {
           session.disconnect()
         }
@@ -96,20 +121,6 @@ class Inspector {
         if (pearInspectMethod === 'connect') {
           session = new this.inspector.Session()
 
-          const isBareInspector = !session.disconnect
-          if (isBareInspector) {
-            this.console = new this.inspector.Console()
-            this.oldGlobalConsole = global.console
-            const newConsole = {}
-            for (const method of Object.keys(this.console)) {
-              newConsole[method] = (...args) => {
-                this.console[method](...args)
-                this.oldGlobalConsole[method](...args)
-              }
-            }
-            global.console = newConsole
-          }
-
           session.connect()
           session.on('inspectorNotification', msg => socket.write(JSON.stringify(msg)))
 
@@ -117,14 +128,6 @@ class Inspector {
         }
 
         if (pearInspectMethod === 'disconnect') {
-          const isBareInspector = !session.disconnect
-
-          if (isBareInspector) {
-            global.console = this.oldGlobalConsole
-            this.oldGlobalConsole = null
-            this.console = null
-          }
-
           disconnectSession()
           return
         }
@@ -156,6 +159,8 @@ class Inspector {
     this.stopping = true
     this.dhtServer.off('connection', this.connectionHandler)
     this.connectionHandler = null
+
+    if (isBare) this._resetGlobalConsole()
 
     if (!this.dhtServerHandledExternally) {
       await this.dht.destroy()

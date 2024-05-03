@@ -100,6 +100,38 @@ test('Several calls with different return values to ensure order works', async t
   session.post({ id: 9, method: 'Runtime.evaluate', params: { expression: '0 + 9' } })
 })
 
+test('Enabling console allows to read logs', async t => {
+  t.teardown(teardown)
+  t.plan(4)
+
+  inspector = new Inspector({ inspector: nodeInspector })
+  const inspectorKey = await inspector.enable()
+
+  session = new Session({ inspectorKey })
+  session.connect()
+
+  session.once('message', ({ id, result }) => {
+    // This first message is a reply to acknowledge that Console has been enabled.
+    // These two checks are commented out because they'd otherwise result in a
+    // console.log which then interferes with the test.
+    // t.is(id, 1)
+    // t.ok(result)
+
+    session.once('message', ({ method, params: { message } }) => {
+      // When running all the tests, message.text will sometimes be something from the previous test.
+      // That is why this test just checks if there is text, and that the method is correct
+      t.ok(message.text)
+      t.is(method, 'Console.messageAdded')
+      t.is(message.source, 'console-api')
+      t.is(message.level, 'log')
+    })
+
+    console.log('Testing console.log')
+  })
+
+  session.post({ id: 1, method: 'Console.enable' })
+})
+
 test('publicKey needed for Session', t => {
   t.plan(1)
   t.exception(() => {
