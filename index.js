@@ -207,11 +207,7 @@ class Session extends EventEmitter {
 
       this.emit('message', JSON.parse(data))
     })
-    this.dhtSocket.on('error', err => {
-      const ignoreError = err?.message?.includes('connection timed out')
-      if (ignoreError) return
-      this.emit('error', err)
-    })
+    this.dhtSocket.on('error', noop)
     this.dhtSocket.on('close', () => {
       this.emit('close')
       this.destroy()
@@ -243,6 +239,8 @@ class Session extends EventEmitter {
     this.dhtSocket = null
   }
 }
+
+function noop () {}
 
 module.exports = {
   Inspector,
