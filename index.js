@@ -25,7 +25,7 @@ class Inspector {
     this.dhtServerHandledExternally = !!dhtServer
     this.stopping = false
     this.oldGlobalConsole = null
-    this.bootstrap = bootstrap
+    this.bootstrap = global.Pear?.config?.dht?.bootstrap || bootstrap
   }
 
   _overrideGlobalConsole () {
@@ -172,7 +172,7 @@ class Inspector {
 }
 
 class Session extends EventEmitter {
-  constructor ({ inspectorKey, publicKey, bootstrap }) {
+  constructor ({ inspectorKey, publicKey, bootstrap = global.Pear?.config?.dht?.bootstrap }) {
     super()
 
     const hasCorrectParams = (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
@@ -180,6 +180,7 @@ class Session extends EventEmitter {
 
     let hasReceivedHandshake = false
     this.connected = false
+    this.bootstrap = bootstrap
     this.dhtClient = new HyperDht({ bootstrap })
     this.dhtSocket = null
     if (inspectorKey) {

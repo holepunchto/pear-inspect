@@ -399,3 +399,17 @@ test.skip('Filename is set for Pear', async t => {
     t.ok(filename.endsWith('/test/fixtures/pear-project/index.js'))
   })
 })
+
+test('Uses global Pear bootstrap', async t => {
+  t.teardown(teardown)
+  t.plan(2)
+
+  global.Pear = { config: { dht: {} } }
+  global.Pear.config.dht.bootstrap = await setupTestnet(t)
+  inspector = new Inspector({ inspector: nodeInspector })
+  const inspectorKey = await inspector.enable()
+  session = new Session({ inspectorKey })
+
+  t.is(inspector.bootstrap.toString(), global.Pear.config.dht.bootstrap.toString())
+  t.is(session.bootstrap.toString(), global.Pear.config.dht.bootstrap.toString())
+})
