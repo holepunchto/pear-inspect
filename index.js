@@ -7,7 +7,7 @@ const { isBare } = require('which-runtime')
 const VERSION = 2
 
 class Inspector {
-  constructor ({ dhtServer, inspectorKey, inspector, filename } = {}) {
+  constructor ({ dhtServer, inspectorKey, inspector, filename, bootstrap } = {}) {
     if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
     if (!inspector) {
       try {
@@ -25,6 +25,7 @@ class Inspector {
     this.dhtServerHandledExternally = !!dhtServer
     this.stopping = false
     this.oldGlobalConsole = null
+    this.bootstrap = global.Pear?.config?.dht?.bootstrap || bootstrap
   }
 
   _overrideGlobalConsole () {
@@ -67,7 +68,7 @@ class Inspector {
     }
 
     if (shouldCreateServer) {
-      this.dht = new HyperDht()
+      this.dht = new HyperDht({ bootstrap: this.bootstrap })
       this.dhtServer = this.dht.createServer({
         firewall (remotePublicKey, remote) {
           return !b4a.equals(remotePublicKey, this.publicKey)
@@ -171,7 +172,7 @@ class Inspector {
 }
 
 class Session extends EventEmitter {
-  constructor ({ inspectorKey, publicKey }) {
+  constructor ({ inspectorKey, publicKey, bootstrap = global.Pear?.config?.dht?.bootstrap }) {
     super()
 
     const hasCorrectParams = (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
@@ -179,7 +180,8 @@ class Session extends EventEmitter {
 
     let hasReceivedHandshake = false
     this.connected = false
-    this.dhtClient = new HyperDht()
+    this.bootstrap = bootstrap
+    this.dhtClient = new HyperDht({ bootstrap })
     this.dhtSocket = null
     if (inspectorKey) {
       const keyPair = HyperDht.keyPair(inspectorKey)
