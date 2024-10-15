@@ -53,6 +53,6 @@
   "optionalDependencies": {
     "bare-events": "^2.2.0",
     "bare-path": "^3.0.0",
-    "bare-subprocess": "^3.0.0"
+    "bare-subprocess": "^4.0.0"
   }
 }
