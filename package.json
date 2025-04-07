@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "b4a": "^1.6.4",
-    "bare-inspector": "^3.0.1",
+    "bare-inspector": "^4.0.1",
     "hyperdht": "^6.11.5",
     "which-runtime": "^1.2.0"
   },
@@ -53,6 +53,6 @@
   "optionalDependencies": {
     "bare-events": "^2.2.0",
     "bare-path": "^3.0.0",
-    "bare-subprocess": "^4.0.0"
+    "bare-subprocess": "^5.0.0"
   }
 }
