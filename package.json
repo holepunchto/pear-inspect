@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@hyperswarm/testnet": "^3.1.4",
+    "bare-subprocess": "^5.0.0",
     "brittle": "^3.3.2",
     "standard": "^17.1.0"
   },
@@ -52,7 +53,6 @@
   "homepage": "https://github.com/holepunchto/pear-inspect#readme",
   "optionalDependencies": {
     "bare-events": "^2.2.0",
-    "bare-path": "^3.0.0",
-    "bare-subprocess": "^5.0.0"
+    "bare-path": "^3.0.0"
   }
 }
