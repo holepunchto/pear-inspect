@@ -7,7 +7,9 @@
     "index.js"
   ],
   "scripts": {
-    "test": "standard && node test/test.js",
+    "format": "prettier --write .",
+    "lint": "prettier --check .",
+    "test": "npm run lint && node test/test.js",
     "test-bare": "bare test/test.js"
   },
   "keywords": [],
@@ -41,7 +43,8 @@
     "@hyperswarm/testnet": "^3.1.4",
     "bare-subprocess": "^5.0.0",
     "brittle": "^3.3.2",
-    "standard": "^17.1.0"
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^1.0.0"
   },
   "repository": {
     "type": "git",
