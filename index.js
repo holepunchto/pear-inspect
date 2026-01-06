@@ -14,10 +14,11 @@ class Inspector {
     filename,
     bootstrap
   } = {}) {
-    if (dhtServer && inspectorKey)
+    if (dhtServer && inspectorKey) {
       throw new Error(
         'Inspector constructor cannot take both dhtServer and inspectorKey'
       )
+    }
     if (!inspector) {
       try {
         inspector = require('inspector')
@@ -201,10 +202,11 @@ class Session extends EventEmitter {
 
     const hasCorrectParams =
       (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
-    if (!hasCorrectParams)
+    if (!hasCorrectParams) {
       throw new Error(
         'Session constructor needs inspectorKey or publicKey to connect to the hyperdht stream'
       )
+    }
 
     let hasReceivedHandshake = false
     this.connected = false
@@ -247,10 +249,11 @@ class Session extends EventEmitter {
   }
 
   post(params) {
-    if (!this.connected)
+    if (!this.connected) {
       throw new Error(
         'Session is not connected. .connect() needs to be called prior to .post()'
       )
+    }
 
     this.dhtSocket?.write(JSON.stringify(params))
   }
