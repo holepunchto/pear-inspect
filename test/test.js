@@ -443,7 +443,7 @@ test('Filename is set for mjs', async (t) => {
   process.stderr.on('data', (data) => t.fail())
   process.stdout.on('data', (filename) => {
     filename = filename.toString().trim()
-    t.ok(filename.endsWith('/test/fixtures/module.mjs'))
+    t.ok(filename.endsWith('module.mjs'))
   })
 })
 
