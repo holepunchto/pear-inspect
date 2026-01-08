@@ -7,8 +7,11 @@
     "index.js"
   ],
   "scripts": {
-    "test": "standard && node test/test.js",
-    "test-bare": "bare test/test.js"
+    "format": "prettier --write .",
+    "lint": "prettier --check . && lunte",
+    "test": "npm run test:node && npm run test:bare",
+    "test:node": "node test/test.js",
+    "test:bare": "bare test/test.js"
   },
   "keywords": [],
   "author": "",
@@ -40,8 +43,10 @@
   "devDependencies": {
     "@hyperswarm/testnet": "^3.1.4",
     "bare-subprocess": "^5.0.0",
-    "brittle": "^3.3.2",
-    "standard": "^17.1.0"
+    "brittle": "^3.5.0",
+    "lunte": "^1.0.0",
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^1.0.0"
   },
   "repository": {
     "type": "git",

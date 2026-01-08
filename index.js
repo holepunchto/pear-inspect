@@ -7,18 +7,33 @@ const { isBare } = require('which-runtime')
 const VERSION = 2
 
 class Inspector {
-  constructor ({ dhtServer, inspectorKey, inspector, filename, bootstrap } = {}) {
-    if (dhtServer && inspectorKey) throw new Error('Inspector constructor cannot take both dhtServer and inspectorKey')
+  constructor({
+    dhtServer,
+    inspectorKey,
+    inspector,
+    filename,
+    bootstrap
+  } = {}) {
+    if (dhtServer && inspectorKey) {
+      throw new Error(
+        'Inspector constructor cannot take both dhtServer and inspectorKey'
+      )
+    }
     if (!inspector) {
       try {
         inspector = require('inspector')
       } catch {
-        throw new Error('Inspector constructor needs inspector to run, like "inspector" or "bare-inspector"')
+        throw new Error(
+          'Inspector constructor needs inspector to run, like "inspector" or "bare-inspector"'
+        )
       }
     }
 
-    const pearFilename = global?.Pear?.config?.dir && path.join(global.Pear.config.dir, global.Pear.config.main)
-    this.filename = filename || pearFilename || require?.main?.filename || process?.argv?.[1]
+    const pearFilename =
+      global?.Pear?.config?.dir &&
+      path.join(global.Pear.config.dir, global.Pear.config.main)
+    this.filename =
+      filename || pearFilename || require?.main?.filename || process?.argv?.[1]
     this.inspector = inspector
     this.dhtServer = dhtServer || null
     this.inspectorKey = inspectorKey || null
@@ -28,7 +43,7 @@ class Inspector {
     this.bootstrap = global.Pear?.config?.dht?.bootstrap || bootstrap
   }
 
-  _overrideGlobalConsole () {
+  _overrideGlobalConsole() {
     // Overriding the global.console is needed for bare-inspector (and pear-inspect)
     // to be able to read logs
     const bareInspectorConsole = new this.inspector.Console()
@@ -44,14 +59,14 @@ class Inspector {
     global.console = newGlobalConsole
   }
 
-  _resetGlobalConsole () {
+  _resetGlobalConsole() {
     if (!this.oldGlobalConsole) return
 
     global.console = this.oldGlobalConsole
     this.oldGlobalConsole = null
   }
 
-  async enable () {
+  async enable() {
     const shouldCreateServer = !this.dhtServer
     const shouldGenerateSeed = shouldCreateServer && !this.inspectorKey
 
@@ -70,7 +85,7 @@ class Inspector {
     if (shouldCreateServer) {
       this.dht = new HyperDht({ bootstrap: this.bootstrap })
       this.dhtServer = this.dht.createServer({
-        firewall (remotePublicKey, remote) {
+        firewall(remotePublicKey, remote) {
           return !b4a.equals(remotePublicKey, this.publicKey)
         }
       })
@@ -78,7 +93,7 @@ class Inspector {
 
     if (isBare) this._overrideGlobalConsole()
 
-    this.connectionHandler = socket => {
+    this.connectionHandler = (socket) => {
       let session = null
 
       let hasReceivedHandshake = false
@@ -97,22 +112,26 @@ class Inspector {
       socket.on('error', () => {
         // Ignore all errors. Running pear-inspect should not affect the surrounding app
       })
-      socket.on('data', async data => {
+      socket.on('data', async (data) => {
         if (!hasReceivedHandshake) {
           hasReceivedHandshake = true
 
           const { pearInspectVersion } = JSON.parse(data)
           const isRemoteVersionTooNew = pearInspectVersion > VERSION
           if (isRemoteVersionTooNew) {
-            console.error('[pear-inspect] The remote end has a newer version than this one. Destroying socket.')
+            console.error(
+              '[pear-inspect] The remote end has a newer version than this one. Destroying socket.'
+            )
             socket.destroy()
             return
           }
 
-          socket.write(JSON.stringify({
-            pearInspectVersion: VERSION,
-            filename: this.filename
-          }))
+          socket.write(
+            JSON.stringify({
+              pearInspectVersion: VERSION,
+              filename: this.filename
+            })
+          )
           return
         }
 
@@ -123,7 +142,9 @@ class Inspector {
           session = new this.inspector.Session()
 
           session.connect()
-          session.on('inspectorNotification', msg => socket.write(JSON.stringify(msg)))
+          session.on('inspectorNotification', (msg) =>
+            socket.write(JSON.stringify(msg))
+          )
 
           return
         }
@@ -154,7 +175,7 @@ class Inspector {
     }
   }
 
-  async disable () {
+  async disable() {
     if (!this.connectionHandler || this.stopping) return
 
     this.stopping = true
@@ -172,11 +193,20 @@ class Inspector {
 }
 
 class Session extends EventEmitter {
-  constructor ({ inspectorKey, publicKey, bootstrap = global.Pear?.config?.dht?.bootstrap }) {
+  constructor({
+    inspectorKey,
+    publicKey,
+    bootstrap = global.Pear?.config?.dht?.bootstrap
+  }) {
     super()
 
-    const hasCorrectParams = (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
-    if (!hasCorrectParams) throw new Error('Session constructor needs inspectorKey or publicKey to connect to the hyperdht stream')
+    const hasCorrectParams =
+      (inspectorKey && !publicKey) || (!inspectorKey && publicKey)
+    if (!hasCorrectParams) {
+      throw new Error(
+        'Session constructor needs inspectorKey or publicKey to connect to the hyperdht stream'
+      )
+    }
 
     let hasReceivedHandshake = false
     this.connected = false
@@ -191,14 +221,16 @@ class Session extends EventEmitter {
     }
     this.dhtSocket.write(JSON.stringify({ pearInspectVersion: VERSION }))
     this.dhtSocket.setKeepAlive(5000)
-    this.dhtSocket.on('data', data => {
+    this.dhtSocket.on('data', (data) => {
       if (!hasReceivedHandshake) {
         hasReceivedHandshake = true
 
         const { pearInspectVersion, filename } = JSON.parse(data)
         const isRemoteVersionTooNew = pearInspectVersion > VERSION
         if (isRemoteVersionTooNew) {
-          console.error('[pear-inspect] The remote end has a newer version than this one. Destroying socket.')
+          console.error(
+            '[pear-inspect] The remote end has a newer version than this one. Destroying socket.'
+          )
           this.dhtSocket.destroy()
         } else {
           this.emit('info', { filename })
@@ -216,23 +248,27 @@ class Session extends EventEmitter {
     })
   }
 
-  post (params) {
-    if (!this.connected) throw new Error('Session is not connected. .connect() needs to be called prior to .post()')
+  post(params) {
+    if (!this.connected) {
+      throw new Error(
+        'Session is not connected. .connect() needs to be called prior to .post()'
+      )
+    }
 
     this.dhtSocket?.write(JSON.stringify(params))
   }
 
-  connect () {
+  connect() {
     this.connected = true
     this.dhtSocket?.write(JSON.stringify({ pearInspectMethod: 'connect' }))
   }
 
-  disconnect () {
+  disconnect() {
     this.connected = false
     this.dhtSocket?.write(JSON.stringify({ pearInspectMethod: 'disconnect' }))
   }
 
-  async destroy () {
+  async destroy() {
     if (!this.dhtClient) return
 
     await this.dhtSocket.destroy()
@@ -242,7 +278,7 @@ class Session extends EventEmitter {
   }
 }
 
-function noop () {}
+function noop() {}
 
 module.exports = {
   Inspector,

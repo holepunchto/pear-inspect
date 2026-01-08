@@ -16,7 +16,7 @@ npm install pear-inspect
 
 One of the reasons for using `pear-inspect` is to be able to debug with the pear://runtime application. To do so, all that's needed is to do this, in the app you want to inspect:
 
-``` js
+```js
 import nodeInspector from 'inspector'
 import { Inspector } from 'pear-inspect'
 
@@ -35,7 +35,7 @@ The main thing to understand is that:
 
 On the app where inspection is needed:
 
-``` js
+```js
 import nodeInspector from 'inspector'
 import { Inspector } from 'pear-inspect'
 
@@ -48,7 +48,7 @@ const inspectorKey = await inspector.enable() // Pass the public key to the Sess
 
 On the side where you want to debug the remote app:
 
-``` js
+```js
 import { Session } from 'pear-inspect'
 
 const session = new Session({ inspectorKey }) // The inspectorKey that was return from the Inspector

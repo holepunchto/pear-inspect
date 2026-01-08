@@ -1,4 +1,5 @@
 const test = require('brittle')
+const path = require('path')
 const { Inspector, Session } = require('../')
 const HyperDht = require('hyperdht')
 const nodeInspector = require('inspector')
@@ -8,18 +9,18 @@ const createTestnet = require('@hyperswarm/testnet')
 let inspector
 let session
 
-async function teardown () {
+async function teardown() {
   await inspector?.disable()
   await session?.destroy()
 }
 
-async function setupTestnet (t) {
+async function setupTestnet(t) {
   const testnet = await createTestnet(10)
   t.teardown(() => testnet.destroy())
   return testnet.bootstrap
 }
 
-test('Inspector evaluates correctly', async t => {
+test('Inspector evaluates correctly', async (t) => {
   t.teardown(teardown)
   t.plan(5)
 
@@ -29,7 +30,9 @@ test('Inspector evaluates correctly', async t => {
 
   session = new Session({ inspectorKey, bootstrap })
   session.once('message', ({ id, result, error }) => {
-    const { result: { type, value, description } } = result
+    const {
+      result: { type, value, description }
+    } = result
     t.is(id, 1)
     t.absent(error)
     t.is(type, 'number')
@@ -45,7 +48,7 @@ test('Inspector evaluates correctly', async t => {
   })
 })
 
-test('Message with errornous code returns error', async t => {
+test('Message with errornous code returns error', async (t) => {
   t.teardown(teardown)
   t.plan(3)
 
@@ -67,7 +70,7 @@ test('Message with errornous code returns error', async t => {
   })
 })
 
-test('Message with no return value, returns message with empty object', async t => {
+test('Message with no return value, returns message with empty object', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
@@ -86,7 +89,7 @@ test('Message with no return value, returns message with empty object', async t 
   })
 })
 
-test('Several calls with different return values to ensure order works', async t => {
+test('Several calls with different return values to ensure order works', async (t) => {
   t.teardown(teardown)
   t.plan(10)
 
@@ -97,23 +100,65 @@ test('Several calls with different return values to ensure order works', async t
 
   session = new Session({ inspectorKey, bootstrap })
   session.on('message', ({ id, result }) => {
-    const { result: { value } } = result
+    const {
+      result: { value }
+    } = result
     t.is(id, value)
   })
   session.connect()
-  session.post({ id: 0, method: 'Runtime.evaluate', params: { expression: '0 + 0' } })
-  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '0 + 1' } })
-  session.post({ id: 2, method: 'Runtime.evaluate', params: { expression: '0 + 2' } })
-  session.post({ id: 3, method: 'Runtime.evaluate', params: { expression: '0 + 3' } })
-  session.post({ id: 4, method: 'Runtime.evaluate', params: { expression: '0 + 4' } })
-  session.post({ id: 5, method: 'Runtime.evaluate', params: { expression: '0 + 5' } })
-  session.post({ id: 6, method: 'Runtime.evaluate', params: { expression: '0 + 6' } })
-  session.post({ id: 7, method: 'Runtime.evaluate', params: { expression: '0 + 7' } })
-  session.post({ id: 8, method: 'Runtime.evaluate', params: { expression: '0 + 8' } })
-  session.post({ id: 9, method: 'Runtime.evaluate', params: { expression: '0 + 9' } })
+  session.post({
+    id: 0,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 0' }
+  })
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 1' }
+  })
+  session.post({
+    id: 2,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 2' }
+  })
+  session.post({
+    id: 3,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 3' }
+  })
+  session.post({
+    id: 4,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 4' }
+  })
+  session.post({
+    id: 5,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 5' }
+  })
+  session.post({
+    id: 6,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 6' }
+  })
+  session.post({
+    id: 7,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 7' }
+  })
+  session.post({
+    id: 8,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 8' }
+  })
+  session.post({
+    id: 9,
+    method: 'Runtime.evaluate',
+    params: { expression: '0 + 9' }
+  })
 })
 
-test('Enabling console allows to read logs', async t => {
+test('Enabling console allows to read logs', async (t) => {
   t.teardown(teardown)
   t.plan(4)
 
@@ -147,21 +192,21 @@ test('Enabling console allows to read logs', async t => {
   session.post({ id: 1, method: 'Console.enable' })
 })
 
-test('publicKey needed for Session', t => {
+test('publicKey needed for Session', (t) => {
   t.plan(1)
   t.exception(() => {
-    new Session({ }) // eslint-disable-line no-new
+    new Session({}) // eslint-disable-line no-new
   })
 })
 
-test('inspector is optional', t => {
+test('inspector is optional', (t) => {
   t.plan(1)
 
-  const pearInspector = new Inspector({ })
+  const pearInspector = new Inspector({})
   t.ok(pearInspector.inspector === nodeInspector)
 })
 
-test('Use own hypderdht server for Inspector', async t => {
+test('Use own hypderdht server for Inspector', async (t) => {
   t.plan(3)
 
   const bootstrap = await setupTestnet(t)
@@ -185,16 +230,24 @@ test('Use own hypderdht server for Inspector', async t => {
   })
 
   session.connect()
-  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
 })
 
-test('Use own inspectorKey', async t => {
+test('Use own inspectorKey', async (t) => {
   t.teardown(teardown)
   t.plan(2)
 
   const bootstrap = await setupTestnet(t)
   const inspectorKey = HyperDht.keyPair().secretKey.subarray(0, 32)
-  inspector = new Inspector({ inspectorKey, inspector: nodeInspector, bootstrap })
+  inspector = new Inspector({
+    inspectorKey,
+    inspector: nodeInspector,
+    bootstrap
+  })
   await inspector.enable()
 
   session = new Session({ inspectorKey, bootstrap })
@@ -204,10 +257,14 @@ test('Use own inspectorKey', async t => {
   })
 
   session.connect()
-  session.post({ id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 2' } })
+  session.post({
+    id: 1,
+    method: 'Runtime.evaluate',
+    params: { expression: '1 + 2' }
+  })
 })
 
-test('Get messages from the Inspector that was not sent by the Session', async t => {
+test('Get messages from the Inspector that was not sent by the Session', async (t) => {
   t.teardown(teardown)
   t.plan(3)
 
@@ -232,7 +289,7 @@ test('Get messages from the Inspector that was not sent by the Session', async t
   })
 })
 
-test('Creating session, emits an info event', async t => {
+test('Creating session, emits an info event', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
@@ -242,11 +299,11 @@ test('Creating session, emits an info event', async t => {
 
   session = new Session({ inspectorKey, bootstrap })
   session.on('info', ({ filename }) => {
-    t.ok(filename.endsWith('pear-inspect/test/test.js'))
+    t.ok(filename.endsWith(path.join('pear-inspect', 'test', 'test.js')))
   })
 })
 
-test('Calling .post(), ensure that "info" is emitted, then "message"', async t => {
+test('Calling .post(), ensure that "info" is emitted, then "message"', async (t) => {
   t.teardown(teardown)
   t.plan(2)
 
@@ -272,7 +329,7 @@ test('Calling .post(), ensure that "info" is emitted, then "message"', async t =
   })
 })
 
-test('Calling .post() before .connect() throws', async t => {
+test('Calling .post() before .connect() throws', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
@@ -291,7 +348,7 @@ test('Calling .post() before .connect() throws', async t => {
   })
 })
 
-test('.post() after a .disconnect() throws', async t => {
+test('.post() after a .disconnect() throws', async (t) => {
   t.teardown(teardown)
   t.plan(2)
 
@@ -318,7 +375,7 @@ test('.post() after a .disconnect() throws', async t => {
   })
 })
 
-test('Calling .connect() after a .disconnect() still allows .post()', async t => {
+test('Calling .connect() after a .disconnect() still allows .post()', async (t) => {
   t.teardown(teardown)
   t.plan(2)
 
@@ -346,12 +403,16 @@ test('Calling .connect() after a .disconnect() still allows .post()', async t =>
   })
 })
 
-test('Setting filename overrides the default on', async t => {
+test('Setting filename overrides the default on', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
   const bootstrap = await setupTestnet(t)
-  inspector = new Inspector({ inspector: nodeInspector, filename: 'foobar.js', bootstrap })
+  inspector = new Inspector({
+    inspector: nodeInspector,
+    filename: 'foobar.js',
+    bootstrap
+  })
   const inspectorKey = await inspector.enable()
 
   session = new Session({ inspectorKey, bootstrap })
@@ -360,7 +421,7 @@ test('Setting filename overrides the default on', async t => {
   })
 })
 
-test('All parameters are optional', async t => {
+test('All parameters are optional', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
@@ -368,39 +429,43 @@ test('All parameters are optional', async t => {
   t.ok(inspector)
 })
 
-test('Filename is set for cjs', async t => {
+test('Filename is set for cjs', async (t) => {
   t.teardown(teardown)
   t.plan(1)
   inspector = new Inspector()
-  t.ok(inspector.filename.endsWith('test/test.js'))
+  t.ok(inspector.filename.endsWith(path.join('test', 'test.js')))
 })
 
-test('Filename is set for mjs', async t => {
+test('Filename is set for mjs', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
   const process = spawn('node', ['test/fixtures/module.mjs'])
-  process.stderr.on('data', data => t.fail())
-  process.stdout.on('data', filename => {
+  process.stderr.on('data', (data) => t.fail())
+  process.stdout.on('data', (filename) => {
     filename = filename.toString().trim()
-    t.ok(filename.endsWith('/test/fixtures/module.mjs'))
+    t.ok(filename.endsWith(path.join('test', 'fixtures', 'module.mjs')))
   })
 })
 
 // This test requires Pear to be installed, so is not run automatically
-test.skip('Filename is set for Pear', async t => {
+test.skip('Filename is set for Pear', async (t) => {
   t.teardown(teardown)
   t.plan(1)
 
   const process = spawn('pear', ['run', 'test/fixtures/pear-project'])
-  process.stderr.on('data', data => t.fail())
-  process.stdout.on('data', filename => {
+  process.stderr.on('data', (data) => t.fail())
+  process.stdout.on('data', (filename) => {
     filename = filename.toString().trim()
-    t.ok(filename.endsWith('/test/fixtures/pear-project/index.js'))
+    t.ok(
+      filename.endsWith(
+        path.join('test', 'fixtures', 'pear-project', 'index.js')
+      )
+    )
   })
 })
 
-test('Uses global Pear bootstrap', async t => {
+test('Uses global Pear bootstrap', async (t) => {
   t.teardown(teardown)
   t.plan(2)
 
@@ -410,6 +475,12 @@ test('Uses global Pear bootstrap', async t => {
   const inspectorKey = await inspector.enable()
   session = new Session({ inspectorKey })
 
-  t.is(inspector.bootstrap.toString(), global.Pear.config.dht.bootstrap.toString())
-  t.is(session.bootstrap.toString(), global.Pear.config.dht.bootstrap.toString())
+  t.is(
+    inspector.bootstrap.toString(),
+    global.Pear.config.dht.bootstrap.toString()
+  )
+  t.is(
+    session.bootstrap.toString(),
+    global.Pear.config.dht.bootstrap.toString()
+  )
 })
