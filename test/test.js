@@ -1,4 +1,5 @@
 const test = require('brittle')
+const path = require('path')
 const { Inspector, Session } = require('../')
 const HyperDht = require('hyperdht')
 const nodeInspector = require('inspector')
@@ -298,7 +299,7 @@ test('Creating session, emits an info event', async (t) => {
 
   session = new Session({ inspectorKey, bootstrap })
   session.on('info', ({ filename }) => {
-    t.ok(filename.endsWith('pear-inspect/test/test.js'))
+    t.ok(filename.endsWith(path.join('pear-inspect', 'test', 'test.js')))
   })
 })
 
@@ -432,7 +433,7 @@ test('Filename is set for cjs', async (t) => {
   t.teardown(teardown)
   t.plan(1)
   inspector = new Inspector()
-  t.ok(inspector.filename.endsWith('test/test.js'))
+  t.ok(inspector.filename.endsWith(path.join('test', 'test.js')))
 })
 
 test('Filename is set for mjs', async (t) => {
@@ -443,7 +444,7 @@ test('Filename is set for mjs', async (t) => {
   process.stderr.on('data', (data) => t.fail())
   process.stdout.on('data', (filename) => {
     filename = filename.toString().trim()
-    t.ok(filename.endsWith('module.mjs'))
+    t.ok(filename.endsWith(path.join('test', 'fixtures', 'module.mjs')))
   })
 })
 
@@ -456,7 +457,11 @@ test.skip('Filename is set for Pear', async (t) => {
   process.stderr.on('data', (data) => t.fail())
   process.stdout.on('data', (filename) => {
     filename = filename.toString().trim()
-    t.ok(filename.endsWith('/test/fixtures/pear-project/index.js'))
+    t.ok(
+      filename.endsWith(
+        path.join('test', 'fixtures', 'pear-project', 'index.js')
+      )
+    )
   })
 })
 
