@@ -36,13 +36,13 @@
   },
   "dependencies": {
     "b4a": "^1.6.4",
-    "bare-inspector": "^4.0.1",
+    "bare-inspector": "^6.1.0",
     "hyperdht": "^6.11.5",
     "which-runtime": "^1.2.0"
   },
   "devDependencies": {
     "@hyperswarm/testnet": "^3.1.4",
-    "bare-subprocess": "^5.0.0",
+    "bare-subprocess": "^6.1.0",
     "brittle": "^3.5.0",
     "lunte": "^1.0.0",
     "prettier": "^3.6.2",
